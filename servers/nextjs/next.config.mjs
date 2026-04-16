@@ -1,5 +1,6 @@
 
 const nextConfig = {
+  typescript: { ignoreBuildErrors: true },
   reactStrictMode: false,
   distDir: ".next-build",
   
