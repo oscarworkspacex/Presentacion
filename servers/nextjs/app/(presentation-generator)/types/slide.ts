@@ -35,4 +35,5 @@ export interface Slide {
   speaker_note?: string;
 
   content: SlideContent;
+  video_url?: string | null;
 }

@@ -26,12 +26,17 @@ export default function LoginPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Guardar token en localStorage también
+        // Guardar token y datos de usuario en localStorage
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("username", data.username);
+        localStorage.setItem("user_role", data.role || "user");
         
-        // Redirigir a la página principal
-        router.push("/");
+        // Redirigir según el rol
+        if (data.role === "admin") {
+          router.push("/dashboard");
+        } else {
+          router.push("/dashboard");  // Ambos van al dashboard, la UI se ajusta según rol
+        }
         router.refresh();
       } else {
         const errorData = await response.json();

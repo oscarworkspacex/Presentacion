@@ -3,7 +3,9 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { addNewSlide } from "@/store/slices/presentationGeneration";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 
 interface AddQuestionsButtonProps {
@@ -17,7 +19,10 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasQuestions, setHasQuestions] = useState<boolean | null>(null);
-  const router = useRouter();
+  const dispatch = useDispatch();
+  const presentationData = useSelector(
+    (state: RootState) => state.presentationGeneration.presentationData
+  );
 
   const checkQuestionsStatus = async () => {
     try {
@@ -78,7 +83,19 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        
+
+        // Add the new quiz slide directly to Redux so it's visible immediately
+        // without requiring a full page reload
+        if (data.slides && data.slides.length > 0 && presentationData?.slides) {
+          const quizSlide = data.slides[data.slides.length - 1];
+          dispatch(
+            addNewSlide({
+              slideData: quizSlide,
+              index: presentationData.slides.length - 1,
+            })
+          );
+        }
+
         toast.success("¡Preguntas agregadas!", {
           description: "Se ha agregado un slide interactivo de preguntas al final de tu presentación.",
         });
@@ -86,9 +103,6 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
         // Track the event
         trackEvent(MixpanelEvent.Presentation_Add_Questions_Slide);
 
-        // Refresh the page to show the new slide
-        router.refresh();
-        
         setHasQuestions(true);
       } else {
         const errorData = await response.json();

@@ -20,7 +20,7 @@ class UserConfigEnvUpdateMiddleware(BaseHTTPMiddleware):
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """
     Middleware para autenticación JWT
-    Verifica token en cookies o header Authorization
+    Verifica token en cookies o header Authorization y guarda user_info en request.state
     """
     
     # Rutas que NO requieren autenticación
@@ -67,8 +67,55 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Token inválido o expirado"}
             )
         
-        # Agregar usuario al request state
+        # Agregar user_info completo al request state (username y role)
         request.state.user = user_data.get("username")
+        request.state.user_info = user_data  # Incluye username y role
+        request.state.user_role = user_data.get("role", "user")
+        
+        # Continuar con la petición
+        response = await call_next(request)
+        return response
+
+
+class RoleRequiredMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware para verificar que el usuario tenga rol de admin en rutas protegidas
+    Solo permite admin en rutas de /api/v1/admin/* y en endpoints de escritura
+    """
+    
+    # Rutas que requieren rol ADMIN (escritura)
+    ADMIN_ONLY_PATHS = [
+        "/api/v1/admin",  # Gestión de usuarios
+    ]
+    
+    # Rutas de escritura que requieren ADMIN
+    WRITE_ENDPOINTS = [
+        "/api/v1/ppt/presentation",
+        "/api/v1/ppt/add-questions-slide",
+        "/api/v1/ppt/slides",
+        "/api/v1/ppt/images",
+    ]
+    
+    async def dispatch(self, request: Request, call_next):
+        # Obtener role del request.state (ya verificado por AuthenticationMiddleware)
+        user_role = getattr(request.state, "user_role", "user")
+        
+        # Verificar si la ruta requiere admin
+        is_admin_path = any(request.url.path.startswith(path) for path in self.ADMIN_ONLY_PATHS)
+        
+        # Verificar si es una operación de escritura
+        is_write_operation = False
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            is_write_operation = any(
+                request.url.path.startswith(path) for path in self.WRITE_ENDPOINTS
+            )
+        
+        # Si requiere admin y el usuario no es admin, denegar
+        if (is_admin_path or is_write_operation) and user_role != "admin":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "Acceso denegado. Se requiere rol de administrador."}
+            )
         
         # Continuar con la petición
         response = await call_next(request)

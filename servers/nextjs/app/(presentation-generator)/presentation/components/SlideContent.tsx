@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Loader2, PlusIcon, Trash2, WandSparkles, StickyNote } from "lucide-react";
+import { Loader2, PlusIcon, Trash2, WandSparkles, StickyNote, Video, Link, X } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -21,6 +21,8 @@ import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import NewSlide from "../../components/NewSlide";
 import { addToHistory } from "@/store/slices/undoRedoSlice";
+import { useUserRole } from "@/hooks/useUserRole";
+import VideoEmbed from "./VideoEmbed";
 
 interface SlideContentProps {
   slide: any;
@@ -32,6 +34,9 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
   const dispatch = useDispatch();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNewSlideSelection, setShowNewSlideSelection] = useState(false);
+  const [videoInput, setVideoInput] = useState("");
+  const [videoPopoverOpen, setVideoPopoverOpen] = useState(false);
+  const { isAdmin } = useUserRole(); // Hook para verificar rol
   const { presentationData, isStreaming } = useSelector(
     (state: RootState) => state.presentationGeneration
   );
@@ -88,6 +93,29 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
       });
     }
   };
+  const handleVideoSubmit = () => {
+    const url = videoInput.trim();
+    if (!url) {
+      toast.error("Pega un link de YouTube o TikTok");
+      return;
+    }
+    const isYT = /youtube\.com|youtu\.be/.test(url);
+    const isTT = /tiktok\.com/.test(url);
+    if (!isYT && !isTT) {
+      toast.error("Solo se admiten links de YouTube o TikTok");
+      return;
+    }
+    dispatch(updateSlide({ index: slide.index, slide: { ...slide, video_url: url } }));
+    setVideoPopoverOpen(false);
+    setVideoInput("");
+    toast.success("Video agregado a la diapositiva");
+  };
+
+  const handleRemoveVideo = () => {
+    dispatch(updateSlide({ index: slide.index, slide: { ...slide, video_url: null } }));
+    toast.success("Video eliminado");
+  };
+
   // Scroll to the new slide when streaming and new slides are being generated
   useEffect(() => {
     if (
@@ -112,8 +140,8 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
 
   // Memoized slide content rendering to prevent unnecessary re-renders
   const slideContent = useMemo(() => {
-    return renderSlideContent(slide, isStreaming ? false : true); // Enable edit mode for main content
-  }, [renderSlideContent, slide, isStreaming]);
+    return renderSlideContent(slide, isStreaming ? false : isAdmin); // Solo editable si es admin
+  }, [renderSlideContent, slide, isStreaming, isAdmin]);
 
   useEffect(() => {
     if (loading) {
@@ -156,7 +184,7 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
             slideContent
           )}
 
-          {!showNewSlideSelection && (
+          {!showNewSlideSelection && isAdmin && (
             <div className="group-hover:opacity-100 hidden md:block opacity-0 transition-opacity my-4 duration-300">
               <ToolTip content="Add new slide below">
                 {!isStreaming && !loading && (
@@ -173,7 +201,7 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
               </ToolTip>
             </div>
           )}
-          {showNewSlideSelection && !loading && (
+          {showNewSlideSelection && !loading && isAdmin && (
             <NewSlide
               index={index}
               group={slide.layout_group}
@@ -182,7 +210,7 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
             />
           )}
          
-          {!isStreaming && !loading && (
+          {!isStreaming && !loading && isAdmin && (
             <ToolTip content="Delete slide">
               <div
                 onClick={() => {
@@ -195,7 +223,7 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
               </div>
             </ToolTip>
           )}
-          {!isStreaming && (
+          {!isStreaming && isAdmin && (
             <div className="absolute top-2 z-20 sm:top-4 hidden md:block left-2 sm:left-4 transition-transform">
               <Popover>
                 <PopoverTrigger>
@@ -253,6 +281,61 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
               </Popover>
             </div>
           )}
+          {/* Video Button */}
+          {!isStreaming && !loading && isAdmin && (
+            <div className="absolute top-2 z-20 sm:top-4 right-16 sm:right-20 hidden md:block transition-transform">
+              <Popover open={videoPopoverOpen} onOpenChange={setVideoPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <div className="cursor-pointer">
+                    <ToolTip content={slide?.video_url ? "Cambiar video" : "Agregar video de YouTube o TikTok"}>
+                      <div className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${slide?.video_url ? "bg-[#5141e5] shadow-md" : "hover:bg-gray-100"}`}>
+                        <Video className={`w-4 sm:w-5 h-4 sm:h-5 ${slide?.video_url ? "text-white" : "text-gray-500"}`} />
+                      </div>
+                    </ToolTip>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent side="left" align="start" sideOffset={10} className="w-[300px] z-30">
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <Video className="w-4 h-4 text-[#5141e5]" />
+                      Agregar video
+                    </p>
+                    <p className="text-xs text-gray-500">Pega un link de YouTube o TikTok</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={videoInput}
+                        onChange={(e) => setVideoInput(e.target.value)}
+                        placeholder="https://youtube.com/watch?v=..."
+                        className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5141e5]/40 focus:border-[#5141e5]"
+                        onKeyDown={(e) => { if (e.key === "Enter") handleVideoSubmit(); }}
+                      />
+                      <button
+                        onClick={handleVideoSubmit}
+                        className="bg-[#5141e5] hover:bg-[#4133c5] text-white px-3 py-2 rounded-lg transition-colors"
+                      >
+                        <Link className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {slide?.video_url && (
+                      <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-xs text-gray-600 truncate flex-1">
+                          {slide.video_url.includes("youtube") || slide.video_url.includes("youtu.be") ? "📺 YouTube" : "🎵 TikTok"} vinculado
+                        </span>
+                        <button
+                          onClick={() => { handleRemoveVideo(); setVideoPopoverOpen(false); }}
+                          className="text-red-400 hover:text-red-600 ml-2 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
           {/* Speaker Notes */}
           {!isStreaming && slide?.speaker_note && (
             <div className="absolute top-2 z-20 sm:top-4 right-8 sm:right-12 hidden md:block transition-transform">
@@ -274,6 +357,15 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
                 </PopoverContent>
               </Popover>
             </div>
+          )}
+
+          {/* Video Embed Overlay */}
+          {slide?.video_url && (
+            <VideoEmbed
+              url={slide.video_url}
+              onRemove={handleRemoveVideo}
+              isAdmin={isAdmin}
+            />
           )}
         </div>
       </div>

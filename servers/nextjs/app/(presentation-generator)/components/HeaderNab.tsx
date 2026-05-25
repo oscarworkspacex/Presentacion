@@ -1,15 +1,17 @@
 "use client";
-import { LayoutDashboard, Settings, Upload } from "lucide-react";
+import { LayoutDashboard, Settings, Upload, Users } from "lucide-react";
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import { RootState } from "@/store/store";
 import { useSelector } from "react-redux";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const HeaderNav = () => {
 
   const canChangeKeys = useSelector((state: RootState) => state.userConfig.can_change_keys);
+  const { isAdmin } = useUserRole();
   const pathname = usePathname();
 
   return (
@@ -27,6 +29,22 @@ const HeaderNav = () => {
           Dashboard
         </span>
       </Link>
+      
+      {isAdmin && (
+        <Link
+          href="/admin/users"
+          prefetch={false}
+          className="flex items-center gap-2 px-3 py-2 text-white hover:bg-primary/80 rounded-md transition-colors outline-none"
+          role="menuitem"
+          onClick={() => trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/admin/users" })}
+        >
+          <Users className="w-5 h-5" />
+          <span className="text-sm font-medium font-inter">
+            Usuarios
+          </span>
+        </Link>
+      )}
+
       {canChangeKeys && (
         <Link
           href="/settings"

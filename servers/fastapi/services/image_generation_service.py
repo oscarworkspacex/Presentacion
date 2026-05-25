@@ -96,18 +96,21 @@ class ImageGenerationService:
         client = genai.Client()
         response = await asyncio.to_thread(
             client.models.generate_content,
-            model="gemini-2.5-flash-image-preview",
+            model="gemini-2.0-flash-preview-image-generation",
             contents=[prompt],
             config=GenerateContentConfig(response_modalities=["TEXT", "IMAGE"]),
         )
 
+        image_path = None
         for part in response.candidates[0].content.parts:
-            if part.text is not None:
-                print(part.text)
-            elif part.inline_data is not None:
+            if part.inline_data is not None:
                 image_path = os.path.join(output_directory, f"{uuid.uuid4()}.jpg")
                 with open(image_path, "wb") as f:
                     f.write(part.inline_data.data)
+                break  # Use the first image found
+
+        if not image_path:
+            raise ValueError("Gemini did not return any image data in the response")
 
         return image_path
 

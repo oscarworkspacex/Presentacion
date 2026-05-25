@@ -14,6 +14,7 @@ from services.image_generation_service import ImageGenerationService
 from utils.llm_calls.generate_questions_from_content import (
     generate_questions_from_presentation_content,
     generate_fallback_questions,
+    extract_clean_content_from_slides,
 )
 from utils.llm_calls.generate_slide_content import get_slide_content_from_type_and_outline
 from utils.process_slides import (
@@ -118,15 +119,20 @@ class SlideGenerationService:
         """
         logger.info("Generating questions slide from presentation content")
         
-        # Extract content from previous slides
-        presentation_content = self._extract_presentation_content(previous_slides)
+        # Build outlines from slide content for the generator
         outlines = [{"content": slide.content} for slide in previous_slides if slide.content]
-        
+
+        # Extract clean readable text using the shared utility
+        presentation_content = extract_clean_content_from_slides(outlines)
+
+        if not presentation_content.strip():
+            presentation_content = self._extract_presentation_content(previous_slides)
+
         if not presentation_content.strip():
             presentation_content = "Esta presentación contiene información valiosa."
-        
-        logger.debug(f"Extracted {len(presentation_content)} characters of content")
-        
+
+        logger.debug(f"Extracted {len(presentation_content)} characters of content for questions")
+
         # Generate questions with AI
         try:
             questions = await generate_questions_from_presentation_content(

@@ -19,6 +19,7 @@ from models.sql.slide import SlideModel
 from models.sql.presentation_layout_code import PresentationLayoutCodeModel
 from models.sql.template import TemplateModel
 from models.sql.webhook_subscription import WebhookSubscription
+from models.sql.user import UserModel
 from utils.db_utils import get_database_url_and_connect_args
 from utils.get_env import get_container_db_url_env
 
@@ -64,6 +65,7 @@ async def create_db_and_tables():
                     TemplateModel.__table__,
                     WebhookSubscription.__table__,
                     AsyncPresentationGenerationTaskModel.__table__,
+                    UserModel.__table__,  # Tabla de usuarios
                 ],
             )
         )
