@@ -56,7 +56,12 @@ async def add_questions_slide_to_presentation(
             )
     
     # Usar la extracción centralizada que maneja estructuras JSON anidadas
-    outlines = [{"content": slide.content} for slide in existing_slides_list if slide.content]
+    content_slides = [
+        slide for slide in existing_slides_list
+        if slide.layout_group != "questions"
+        and slide.layout != "questions:questions-quiz-slide"
+    ]
+    outlines = [{"content": slide.content} for slide in content_slides if slide.content]
     presentation_content = extract_clean_content_from_slides(outlines)
 
     # Añadir título al inicio si está disponible
@@ -68,8 +73,20 @@ async def add_questions_slide_to_presentation(
     if not presentation_content.strip():
         presentation_content = "Esta presentación contiene información valiosa."
 
-    # Detectar idioma de la presentación
+    # Detectar idioma de la presentación basándose en el contenido
     lang = getattr(presentation, "language", "es") or "es"
+    
+    # Forzar español si detectamos caracteres españoles en el contenido
+    spanish_chars = presentation_content.count('ñ') + presentation_content.count('á') + \
+                    presentation_content.count('é') + presentation_content.count('í') + \
+                    presentation_content.count('ó') + presentation_content.count('ú') + \
+                    presentation_content.count('¿') + presentation_content.count('¡')
+    
+    if spanish_chars > 0:
+        lang = "es"
+        logger.info(f"Idioma forzado a español por detección de {spanish_chars} caracteres españoles")
+    else:
+        logger.info(f"Idioma detectado de la presentación: {lang}")
 
     # Generar preguntas con IA basadas en el contenido real
     try:
@@ -81,6 +98,15 @@ async def add_questions_slide_to_presentation(
             outlines=outlines,
         )
         logger.info(f"Generated {len(generated_questions)} questions successfully")
+        
+        # Log detallado de las preguntas para debugging
+        for i, q in enumerate(generated_questions, 1):
+            logger.info(f"Pregunta {i}: {q.get('question', '')[:80]}")
+        
+        # Log del JSON completo que se enviará
+        logger.info(f"JSON que se enviará al frontend:")
+        for i, q in enumerate(generated_questions, 1):
+            logger.info(f"  Q{i} full: question={q.get('question', '')}, options={q.get('options', [])[:2]}")
     except Exception as e:
         logger.warning(f"AI question generation failed: {e}. Using fallback.")
         generated_questions = generate_fallback_questions(
@@ -97,6 +123,14 @@ async def add_questions_slide_to_presentation(
         "description": "Responde las siguientes preguntas para evaluar tu comprensión del contenido presentado.",
         "customQuestions": generated_questions
     }
+    
+    # DEBUG: Log el contenido completo antes de guardar
+    logger.info(f"🔍 Contenido del slide ANTES de guardar:")
+    for i, q in enumerate(generated_questions, 1):
+        logger.info(f"  📝 Pregunta {i}:")
+        logger.info(f"     Texto: {q.get('question', 'N/A')[:100]}")
+        logger.info(f"     Opciones: {q.get('options', [])}")
+        logger.info(f"     Correcta: {q.get('correctAnswer', 'N/A')}")
     
     logger.info(f"Questions slide created with {len(generated_questions)} questions ({len(presentation_content)} chars of context)")
 

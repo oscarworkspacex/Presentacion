@@ -47,177 +47,76 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
     const [showResults, setShowResults] = useState(false);
     const [questions, setQuestions] = useState<Question[]>([]);
 
-    // Generar preguntas basadas en el contenido o usar preguntas personalizadas
+    const deduplicateQuestions = (items: Question[]): Question[] => {
+        const unique: Question[] = [];
+
+        for (const item of items) {
+            const normalized = item.question.toLowerCase().replace(/[^\w\sáéíóúñ]/g, " ").replace(/\s+/g, " ").trim();
+            const isDuplicate = unique.some((existing) => {
+                const existingNormalized = existing.question
+                    .toLowerCase()
+                    .replace(/[^\w\sáéíóúñ]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                return existingNormalized === normalized;
+            });
+
+            if (!isDuplicate) {
+                unique.push({ ...item, id: unique.length + 1 });
+            }
+        }
+
+        return unique;
+    };
+
+    // Usar preguntas generadas desde el contenido de la presentación
     useEffect(() => {
-        let questionsToUse: Question[];
-
-        console.log("🔍 QuizSlideLayout - Datos recibidos:", {
-            slideData,
-            hasCustomQuestions: slideData?.customQuestions && slideData.customQuestions.length > 0,
-            customQuestionsCount: slideData?.customQuestions ? slideData.customQuestions.length : 0,
-            presentationContent: slideData?.presentationContent?.substring(0, 100) + "...",
-            customQuestionsSample: slideData?.customQuestions?.[0] ? {
-                question: slideData.customQuestions[0].question?.substring(0, 50) + "...",
-                hasId: 'id' in slideData.customQuestions[0],
-                optionsCount: slideData.customQuestions[0].options?.length
-            } : null
-        });
-
-        // Si hay preguntas personalizadas, usarlas
         if (slideData?.customQuestions && slideData.customQuestions.length > 0) {
-            console.log("✅ Usando preguntas personalizadas generadas por IA");
-            questionsToUse = slideData.customQuestions.map((q, index) => ({
-                id: (q as any).id || index + 1, // Usar el ID original si existe, o crear uno único
+            console.log('🔍 customQuestions recibidas:', slideData.customQuestions.length);
+            slideData.customQuestions.forEach((q, i) => {
+                console.log(`  Pregunta ${i + 1}:`, q.question?.substring(0, 60));
+            });
+            
+            const mappedQuestions = slideData.customQuestions.map((q, index) => ({
+                id: (q as any).id || index + 1,
                 question: q.question,
                 options: q.options,
                 correctAnswer: q.correctAnswer,
                 explanation: q.explanation
             }));
-        } else {
-            console.log("⚠️ No hay preguntas personalizadas, usando preguntas genéricas");
-            // Generar preguntas basadas en el contenido de la presentación
-            const content = slideData?.presentationContent || '';
 
-            // Extraer información clave del contenido para generar preguntas más relevantes
-            const hasContent = content.length > 0;
+            console.log('🔍 mappedQuestions:', mappedQuestions.length);
+            mappedQuestions.forEach((q, i) => {
+                console.log(`  Mapped ${i + 1}:`, q.question?.substring(0, 60));
+            });
 
-            questionsToUse = [
-                {
-                    id: 1,
-                    question: hasContent
-                        ? "¿Cuál es el tema principal abordado en esta presentación?"
-                        : "¿Cuál es el objetivo principal de la presentación?",
-                    options: hasContent
-                        ? [
-                            "Desarrollo técnico",
-                            "El tema principal presentado",
-                            "Gestión operativa",
-                            "Análisis estratégico"
-                        ]
-                        : [
-                            "Informar sobre un tema",
-                            "El objetivo principal",
-                            "Entretenir al público",
-                            "Vender un producto"
-                        ],
-                    correctAnswer: 1,
-                    explanation: hasContent
-                        ? "El tema principal se menciona claramente en la introducción y se desarrolla a lo largo de la presentación."
-                        : "El objetivo principal guía toda la estructura de la presentación."
-                },
-                {
-                    id: 2,
-                    question: hasContent
-                        ? "¿Qué concepto clave se explica en detalle?"
-                        : "¿Qué concepto fundamental se presenta?",
-                    options: hasContent
-                        ? [
-                            "Concepto básico",
-                            "El concepto clave explicado",
-                            "Tema secundario",
-                            "Aspecto técnico"
-                        ]
-                        : [
-                            "Idea general",
-                            "El concepto fundamental",
-                            "Tema complementario",
-                            "Detalle específico"
-                        ],
-                    correctAnswer: 1,
-                    explanation: hasContent
-                        ? "Este concepto se desarrolla con detalle en varios slides de la presentación."
-                        : "El concepto fundamental es la base de toda la presentación."
-                },
-                {
-                    id: 3,
-                    question: hasContent
-                        ? "¿Cuál es la conclusión principal presentada?"
-                        : "¿Cuál es la conclusión más importante?",
-                    options: hasContent
-                        ? [
-                            "Resumen general",
-                            "La conclusión principal",
-                            "Preguntas abiertas",
-                            "Agradecimientos finales"
-                        ]
-                        : [
-                            "Resumen del tema",
-                            "La conclusión principal",
-                            "Preguntas del público",
-                            "Cierre de la presentación"
-                        ],
-                    correctAnswer: 1,
-                    explanation: hasContent
-                        ? "La conclusión se presenta al final y resume los puntos más importantes."
-                        : "La conclusión sintetiza los aspectos más relevantes presentados."
-                },
-                {
-                    id: 4,
-                    question: hasContent
-                        ? "¿Qué beneficio o ventaja se destaca?"
-                        : "¿Qué beneficio se menciona?",
-                    options: hasContent
-                        ? [
-                            "Ventaja general",
-                            "El beneficio destacado",
-                            "Característica técnica",
-                            "Aspecto operativo"
-                        ]
-                        : [
-                            "Beneficio común",
-                            "El beneficio específico",
-                            "Característica destacada",
-                            "Aspecto funcional"
-                        ],
-                    correctAnswer: 1,
-                    explanation: hasContent
-                        ? "Este beneficio se destaca específicamente en la presentación como un punto clave."
-                        : "El beneficio mencionado es uno de los puntos más importantes para el público."
-                },
-                {
-                    id: 5,
-                    question: hasContent
-                        ? "¿Cuál es la recomendación o acción sugerida?"
-                        : "¿Qué acción se recomienda?",
-                    options: hasContent
-                        ? [
-                            "Acción general",
-                            "La recomendación específica",
-                            "Implementación técnica",
-                            "Evaluación posterior"
-                        ]
-                        : [
-                            "Acción inmediata",
-                            "La recomendación principal",
-                            "Siguiente paso técnico",
-                            "Análisis posterior"
-                        ],
-                    correctAnswer: 1,
-                    explanation: hasContent
-                        ? "La recomendación se presenta como el siguiente paso lógico después del contenido mostrado."
-                        : "La recomendación es la acción concreta que se sugiere al finalizar."
+            const uniqueQuestions = deduplicateQuestions(mappedQuestions);
+            
+            console.log('🔍 uniqueQuestions después de deduplicar:', uniqueQuestions.length);
+            uniqueQuestions.forEach((q, i) => {
+                console.log(`  Unique ${i + 1}:`, q.question?.substring(0, 60));
+            });
+
+            // Solo actualizar si las preguntas realmente cambiaron
+            setQuestions(prevQuestions => {
+                const prevHash = JSON.stringify(prevQuestions.map(q => q.question));
+                const newHash = JSON.stringify(uniqueQuestions.map(q => q.question));
+                
+                if (prevHash !== newHash) {
+                    setSelectedAnswers(new Array(uniqueQuestions.length).fill(-1));
+                    setCurrentQuestion(0);
+                    setShowResults(false);
+                    return uniqueQuestions;
                 }
-            ];
+                return prevQuestions;
+            });
+        } else {
+            setQuestions([]);
+            setSelectedAnswers([]);
+            setCurrentQuestion(0);
+            setShowResults(false);
         }
-
-        // Solo actualizar si las preguntas realmente cambiaron para evitar re-renders innecesarios
-        setQuestions(prevQuestions => {
-            const questionsChanged = JSON.stringify(prevQuestions) !== JSON.stringify(questionsToUse);
-            if (questionsChanged) {
-                console.log("🔄 Actualizando preguntas del quiz");
-                return questionsToUse;
-            }
-            return prevQuestions;
-        });
-
-        // Resetear respuestas solo si cambió el número de preguntas
-        setSelectedAnswers(prevAnswers => {
-            if (prevAnswers.length !== questionsToUse.length) {
-                return new Array(questionsToUse.length).fill(-1);
-            }
-            return prevAnswers;
-        });
-    }, [slideData]);
+    }, [slideData?.customQuestions]);
 
     const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
         const newAnswers = [...selectedAnswers];
@@ -247,10 +146,14 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
 
     if (questions.length === 0) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Generando preguntas...</p>
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                <div className="max-w-xl bg-white rounded-xl shadow-lg p-8 text-center">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                        Preguntas no disponibles
+                    </h2>
+                    <p className="text-gray-600">
+                        Elimina este slide y vuelve a pulsar el botón <strong>Preguntas</strong> para generar un cuestionario basado en el contenido de tu presentación.
+                    </p>
                 </div>
             </div>
         );
@@ -284,7 +187,7 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                             <h3 className="text-lg font-semibold mb-4">Resumen de respuestas:</h3>
                             <div className="space-y-2">
                                 {questions.map((question, index) => (
-                                    <div key={`result-${question.id}`} className="flex items-center justify-between">
+                                    <div key={`summary-${index}-${question.question.substring(0, 20)}`} className="flex items-center justify-between">
                                         <span className="text-sm">Pregunta {index + 1}:</span>
                                         <span className={`text-sm font-medium ${
                                             selectedAnswers[index] === question.correctAnswer
@@ -354,7 +257,7 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                     <div className="space-y-3">
                         {currentQ.options.map((option, index) => (
                             <button
-                                key={`question-${currentQuestion}-option-${index}`}
+                                key={`q${currentQuestion}-opt${index}-${option.substring(0, 10)}`}
                                 onClick={() => handleAnswerSelect(currentQuestion, index)}
                                 className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
                                     selectedAnswers[currentQuestion] === index

@@ -71,7 +71,6 @@ export const usePresentationGeneration = (
       slides: selectedLayoutGroup.slides ? selectedLayoutGroup.slides.length : 0
     });
 
-    // Usar el layout original, el backend se encargará de detectar y generar preguntas
     return {
       name: selectedLayoutGroup.name,
       ordered: selectedLayoutGroup.ordered,
@@ -153,25 +152,11 @@ export const usePresentationGeneration = (
 
       if (!layoutData) return;
 
-      // Agregar automáticamente un slide de preguntas al final
-      let modifiedOutlines = outlines ? [...outlines] : [];
-
-      if (modifiedOutlines.length > 0) {
-        // Crear un nuevo outline para preguntas que será generado con IA
-        const questionsOutline = {
-          content: `🎯 Evaluación de Conocimientos
-
-Esta evaluación contiene preguntas interactivas basadas en el contenido completo de la presentación. Las preguntas serán generadas automáticamente usando inteligencia artificial para evaluar la comprensión del material presentado.`
-        };
-
-        modifiedOutlines.push(questionsOutline);
-      }
-
       console.log("📤 Datos finales enviados al API:", {
         presentation_id: presentationId,
         outlines: {
-          count: modifiedOutlines.length,
-          preview: modifiedOutlines.slice(0, 2).map(o => ({
+          count: outlines?.length || 0,
+          preview: outlines?.slice(0, 2).map(o => ({
             content: o.content?.substring(0, 100) + "..."
           })) || []
         },
@@ -185,7 +170,7 @@ Esta evaluación contiene preguntas interactivas basadas en el contenido complet
       trackEvent(MixpanelEvent.Presentation_Prepare_API_Call);
       const response = await PresentationGenerationApi.presentationPrepare({
         presentation_id: presentationId,
-        outlines: modifiedOutlines,
+        outlines: outlines,
         layout: layoutData,
       });
 

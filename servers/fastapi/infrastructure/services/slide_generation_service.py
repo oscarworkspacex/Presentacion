@@ -120,7 +120,12 @@ class SlideGenerationService:
         logger.info("Generating questions slide from presentation content")
         
         # Build outlines from slide content for the generator
-        outlines = [{"content": slide.content} for slide in previous_slides if slide.content]
+        content_slides = [
+            slide for slide in previous_slides
+            if slide.layout_group != "questions"
+            and slide.layout != "questions-quiz-slide"
+        ]
+        outlines = [{"content": slide.content} for slide in content_slides if slide.content]
 
         # Extract clean readable text using the shared utility
         presentation_content = extract_clean_content_from_slides(outlines)
