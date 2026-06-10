@@ -13,7 +13,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Verificar si hay token
+    // Verificar si hay una API key en sessionStorage
+    const apiKey = sessionStorage.getItem("api_key");
+    const authType = sessionStorage.getItem("auth_type");
+
+    if (apiKey && authType === "api_key") {
+      // Usuario autenticado con API key - permitir acceso sin verificar /me
+      return;
+    }
+
+    // Verificar si hay token JWT
     const checkAuth = async () => {
       try {
         const response = await fetch("/api/v1/auth/me", {

@@ -176,12 +176,14 @@ def _format_question(q: GeneratedQuestion, question_id: int) -> Dict[str, Any]:
     options = q.options[:4]
     while len(options) < 4:
         options.append(f"Opción {len(options) + 1}")
+    
+    # Crear un nuevo dict completamente independiente para evitar referencias compartidas
     return {
-        "id": question_id,
-        "question": q.question.strip(),
-        "options": options,
-        "correctAnswer": correct,
-        "explanation": q.explanation,
+        "id": int(question_id),
+        "question": str(q.question.strip()),
+        "options": [str(opt) for opt in options],
+        "correctAnswer": int(correct),
+        "explanation": str(q.explanation),
     }
 
 

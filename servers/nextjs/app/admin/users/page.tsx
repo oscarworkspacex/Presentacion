@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2, Plus, Pencil, Trash2, Shield, User, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ApiKeyGuard } from "@/components/ApiKeyGuard";
 
 interface UserData {
   id: number;
@@ -170,7 +171,8 @@ export default function UsersAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <ApiKeyGuard>
+      <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -378,5 +380,6 @@ export default function UsersAdminPage() {
         )}
       </div>
     </div>
+    </ApiKeyGuard>
   );
 }

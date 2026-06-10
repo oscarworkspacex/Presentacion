@@ -1,6 +1,6 @@
 "use client";
 import { LayoutDashboard, Settings, Upload, Users } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
@@ -13,6 +13,13 @@ const HeaderNav = () => {
   const canChangeKeys = useSelector((state: RootState) => state.userConfig.can_change_keys);
   const { isAdmin } = useUserRole();
   const pathname = usePathname();
+  const [isApiUser, setIsApiUser] = useState(false);
+
+  useEffect(() => {
+    // Verificar si el usuario está autenticado con API key
+    const authType = sessionStorage.getItem("auth_type");
+    setIsApiUser(authType === "api_key");
+  }, []);
 
   return (
     <div className="flex items-center gap-2">
@@ -30,7 +37,7 @@ const HeaderNav = () => {
         </span>
       </Link>
       
-      {isAdmin && (
+      {!isApiUser && isAdmin && (
         <Link
           href="/admin/users"
           prefetch={false}
@@ -45,7 +52,7 @@ const HeaderNav = () => {
         </Link>
       )}
 
-      {canChangeKeys && (
+      {!isApiUser && canChangeKeys && (
         <Link
           href="/settings"
           prefetch={false}

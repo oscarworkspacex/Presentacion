@@ -14,6 +14,7 @@ import LLMProviderSelection from "@/components/LLMSelection";
 import Header from "../dashboard/components/Header";
 import { LLMConfig } from "@/types/llm_config";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
+import { ApiKeyGuard } from "@/components/ApiKeyGuard";
 
 // Button state interface
 interface ButtonState {
@@ -153,9 +154,10 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-b font-instrument_sans from-gray-50 to-white flex flex-col overflow-hidden">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 max-w-3xl overflow-hidden flex flex-col">
+    <ApiKeyGuard>
+      <div className="h-screen bg-gradient-to-b font-instrument_sans from-gray-50 to-white flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 max-w-3xl overflow-hidden flex flex-col">
         {/* LLM Selection Component */}
         <div className="flex-1 overflow-hidden">
           <LLMProviderSelection
@@ -277,6 +279,7 @@ const SettingsPage = () => {
         </div>
       )}
     </div>
+    </ApiKeyGuard>
   );
 };
 

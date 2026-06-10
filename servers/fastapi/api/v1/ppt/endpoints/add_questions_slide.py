@@ -1,5 +1,6 @@
 import uuid
 import logging
+import copy
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,12 +117,12 @@ async def add_questions_slide_to_presentation(
     # Calculate next slide index
     next_index = max(slide.index for slide in existing_slides_list) + 1
     
-    # Create the questions slide content
+    # Create the questions slide content - usar deepcopy para evitar referencias compartidas
     questions_slide_content = {
         "presentationContent": presentation_content,
         "title": "🎯 Evaluación de Conocimientos",
         "description": "Responde las siguientes preguntas para evaluar tu comprensión del contenido presentado.",
-        "customQuestions": generated_questions
+        "customQuestions": copy.deepcopy(generated_questions)
     }
     
     # DEBUG: Log el contenido completo antes de guardar

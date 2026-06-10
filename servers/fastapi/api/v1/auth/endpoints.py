@@ -5,6 +5,7 @@ from datetime import datetime
 
 from models.auth import LoginRequest, TokenResponse
 from models.sql.user import UserModel
+from models.sql.api_key import ApiKeyModel
 from core.auth import verify_password, create_access_token
 from services.database import get_async_session
 from datetime import timedelta
@@ -105,3 +106,55 @@ async def get_current_user(request: Request):
         "role": user_info.get("role", "user"),
         "authenticated": True,
     }
+
+
+@AUTH_ROUTER.get("/verify-api-key")
+async def verify_api_key(
+    api_key: str,
+    sql_session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Verificar si una API key es válida
+    Este endpoint no requiere autenticación previa
+    """
+    try:
+        # Buscar la API key en la base de datos
+        result = await sql_session.scalar(
+            select(ApiKeyModel).where(ApiKeyModel.key == api_key)
+        )
+        
+        api_key_model = result
+        
+        # Verificar si existe
+        if not api_key_model:
+            return {
+                "valid": False,
+                "reason": "API key not found"
+            }
+        
+        # Verificar si está activa
+        if not api_key_model.is_active:
+            return {
+                "valid": False,
+                "reason": "API key is inactive"
+            }
+        
+        # Verificar si ha expirado
+        if api_key_model.expires_at and api_key_model.expires_at < datetime.utcnow():
+            return {
+                "valid": False,
+                "reason": "API key has expired"
+            }
+        
+        # API key válida
+        return {
+            "valid": True,
+            "name": api_key_model.name,
+            "id": api_key_model.id
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error verifying API key: {str(e)}"
+        )
