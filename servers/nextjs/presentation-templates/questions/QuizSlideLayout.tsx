@@ -71,10 +71,28 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
 
     // Usar preguntas generadas desde el contenido de la presentación
     useEffect(() => {
+        console.log('');
+        console.log('='.repeat(80));
+        console.log('🎯 QuizSlideLayout - useEffect disparado');
+        console.log('='.repeat(80));
+        
         if (slideData?.customQuestions && slideData.customQuestions.length > 0) {
-            console.log('🔍 customQuestions recibidas:', slideData.customQuestions.length);
+            console.log('✅ customQuestions encontradas:', slideData.customQuestions.length);
+            console.log('📊 slideData completo:', {
+                title: slideData.title,
+                description: slideData.description,
+                numQuestions: slideData.customQuestions?.length,
+                presentationContentLength: slideData.presentationContent?.length
+            });
+            
+            console.log('');
+            console.log('📝 PREGUNTAS RECIBIDAS DEL BACKEND:');
             slideData.customQuestions.forEach((q, i) => {
-                console.log(`  Pregunta ${i + 1}:`, q.question?.substring(0, 60));
+                console.log(`\n   Pregunta #${i + 1}:`);
+                console.log(`      Texto: ${q.question}`);
+                console.log(`      Opciones:`, q.options);
+                console.log(`      Correcta: [${q.correctAnswer}] ${q.options[q.correctAnswer]}`);
+                console.log(`      Explicación: ${q.explanation?.substring(0, 100)}...`);
             });
             
             const mappedQuestions = slideData.customQuestions.map((q, index) => ({
@@ -85,32 +103,37 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                 explanation: q.explanation
             }));
 
-            console.log('🔍 mappedQuestions:', mappedQuestions.length);
+            console.log('');
+            console.log('🔄 Preguntas después de mapear:', mappedQuestions.length);
             mappedQuestions.forEach((q, i) => {
-                console.log(`  Mapped ${i + 1}:`, q.question?.substring(0, 60));
+                console.log(`   ${i + 1}. ${q.question.substring(0, 60)}...`);
             });
 
             const uniqueQuestions = deduplicateQuestions(mappedQuestions);
             
-            console.log('🔍 uniqueQuestions después de deduplicar:', uniqueQuestions.length);
+            console.log('');
+            console.log('🔍 Preguntas después de deduplicar:', uniqueQuestions.length);
+            if (uniqueQuestions.length !== mappedQuestions.length) {
+                console.warn(`⚠️  Se eliminaron ${mappedQuestions.length - uniqueQuestions.length} preguntas duplicadas`);
+            }
             uniqueQuestions.forEach((q, i) => {
-                console.log(`  Unique ${i + 1}:`, q.question?.substring(0, 60));
+                console.log(`   ${i + 1}. ${q.question.substring(0, 60)}...`);
             });
 
-            // Solo actualizar si las preguntas realmente cambiaron
-            setQuestions(prevQuestions => {
-                const prevHash = JSON.stringify(prevQuestions.map(q => q.question));
-                const newHash = JSON.stringify(uniqueQuestions.map(q => q.question));
-                
-                if (prevHash !== newHash) {
-                    setSelectedAnswers(new Array(uniqueQuestions.length).fill(-1));
-                    setCurrentQuestion(0);
-                    setShowResults(false);
-                    return uniqueQuestions;
-                }
-                return prevQuestions;
-            });
+            // ACTUALIZAR DIRECTAMENTE - sin comparación de hash que bloquee
+            console.log('');
+            console.log('✅ ACTUALIZANDO PREGUNTAS (sin comparación de hash)');
+            setQuestions(uniqueQuestions);
+            setSelectedAnswers(new Array(uniqueQuestions.length).fill(-1));
+            setCurrentQuestion(0);
+            setShowResults(false);
+            console.log('='.repeat(80));
+            console.log('');
         } else {
+            console.log('❌ NO hay customQuestions en slideData');
+            console.log('slideData recibido:', slideData);
+            console.log('='.repeat(80));
+            console.log('');
             setQuestions([]);
             setSelectedAnswers([]);
             setCurrentQuestion(0);

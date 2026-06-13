@@ -80,7 +80,7 @@ export const useGroupLayouts = () => {
               }}
             >
               <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
-                <Layout data={slide.content} />
+                <Layout key={`layout-${slide.id}`} data={slide.content} />
               </SlideErrorBoundary>
             </TiptapTextReplacer>
           </EditableLayoutWrapper>
@@ -88,7 +88,7 @@ export const useGroupLayouts = () => {
       }
       return (
         <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
-          <Layout data={slide.content} />
+          <Layout key={`layout-${slide.id}`} data={slide.content} />
         </SlideErrorBoundary>
       );
     };

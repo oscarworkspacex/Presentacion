@@ -131,6 +131,53 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
     }
   };
 
+  const regenerateQuestionsSlide = async () => {
+    if (disabled || isLoading) return;
+
+    setIsLoading(true);
+    
+    try {
+      toast.info("Regenerando preguntas...", {
+        description: "Esto puede tomar unos segundos.",
+      });
+
+      // Regenerate questions slide
+      const response = await fetch('/api/v1/ppt/regenerate-questions-slide', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(presentation_id),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Force page reload to show new questions
+        // This ensures the component is fully recreated with new questions
+        window.location.reload();
+
+        toast.success("¡Preguntas regeneradas!", {
+          description: "Se han generado nuevas preguntas basadas en el contenido actual.",
+        });
+
+        // Track the event
+        trackEvent(MixpanelEvent.Presentation_Add_Questions_Slide);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to regenerate questions slide');
+      }
+    } catch (error: any) {
+      console.error('Error regenerating questions slide:', error);
+      
+      toast.error("No se pudieron regenerar las preguntas", {
+        description: "Ocurrió un error inesperado. Por favor intenta de nuevo.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Auto-check status on first render if not already checked
   React.useEffect(() => {
     if (hasQuestions === null && presentation_id) {
@@ -140,15 +187,20 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
   }, [presentation_id]);
 
   if (hasQuestions === true) {
-    // If questions already exist, show a different state
+    // If questions already exist, show regenerate button
     return (
       <Button
+        onClick={regenerateQuestionsSlide}
+        disabled={disabled || isLoading}
         variant="ghost"
-        className="border border-white/50 font-bold text-white/70 rounded-[32px] cursor-not-allowed"
-        disabled
+        className="border border-white/70 font-bold text-white rounded-[32px] transition-all duration-300 group hover:bg-white hover:text-[#5146E5] disabled:opacity-50"
       >
-        <HelpCircle className="w-4 h-4 mr-1" />
-        Preguntas ✓
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+        ) : (
+          <HelpCircle className="w-4 h-4 mr-1 group-hover:text-[#5146E5]" />
+        )}
+        {isLoading ? "Regenerando..." : "Regenerar Preguntas"}
       </Button>
     );
   }
