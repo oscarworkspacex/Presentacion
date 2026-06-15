@@ -1,11 +1,51 @@
 .git
 .gitignore
+.env
 
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# FastAPI
 servers/fastapi/tmp
 servers/fastapi/debug
 servers/fastapi/.venv
+servers/fastapi/__pycache__
+servers/fastapi/**/__pycache__
+servers/fastapi/chroma/
+servers/fastapi/.fastembed_cache/
+servers/fastapi/nltk/
+servers/fastapi/build/
+servers/fastapi/generated_models/
 
+# Next.js
 servers/nextjs/node_modules
 servers/nextjs/.next
+servers/nextjs/out
+servers/nextjs/.next-build
 
+# Databases
 container.db
+*.db
+
+# Application data
+app_data/
+user_data/
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+
+# Logs
+*.log
+debug/
+tmp/
+
+# Documentation
+README.md
+*.md
