@@ -1,5 +1,11 @@
 import React from 'react'
 import * as z from "zod";
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+    SLIDE_BODY,
+    SLIDE_ACCENT_LINE,
+} from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'table-info-slide'
 export const layoutName = 'Table with Info'
@@ -27,7 +33,7 @@ const tableInfoSlideSchema = z.object({
     }).meta({
         description: "Table structure with headers and rows"
     }),
-    description: z.string().min(10).max(200).default('This comparison shows our competitive position in the market. While we currently have a smaller market share, our growth rate significantly exceeds competitors, indicating strong potential for future expansion.').meta({
+    description: z.string().min(10).max(180).default('This comparison shows our competitive position in the market. While we currently have a smaller market share, our growth rate significantly exceeds competitors, indicating strong potential for future expansion.').meta({
         description: "Descriptive text that appears below the table",
     })
 })
@@ -58,7 +64,7 @@ const TableInfoSlideLayout: React.FC<TableInfoSlideLayoutProps> = ({ data: slide
             />
 
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden flex flex-col"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
                     background:"var(--card-background-color,#ffffff)"
@@ -92,44 +98,38 @@ const TableInfoSlideLayout: React.FC<TableInfoSlideLayoutProps> = ({ data: slide
                 </div>
 
                 {/* Main Content */}
-                <div className="relative z-10 px-8 sm:px-12 lg:px-20 pt-12 py-8 flex-1 flex flex-col justify-between">
-                    
-                    {/* Title Section */}
-                    <div className="text-center space-y-4">
-                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900">
+                <div className="relative z-10 px-8 sm:px-12 lg:px-20 pt-10 pb-6 flex-1 flex flex-col justify-between min-h-0">
+                    <div className="text-center space-y-2">
+                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className={SLIDE_TITLE}>
                             {slideData?.title || 'Market Comparison'}
                         </h1>
-                        {/* Purple accent line */}
-                        <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-20 h-1 bg-purple-600 mx-auto"></div>
+                        <div style={{background:"var(--primary-accent-color,#9333ea)"}} className={`${SLIDE_ACCENT_LINE} mx-auto`}></div>
                     </div>
 
-                    {/* Table Section */}
-                    <div className="flex-1 flex items-center justify-center py-8">
+                    <div className="flex-1 flex items-center justify-center py-4 min-h-0">
                         <div className="w-full max-w-4xl">
                             <div style={{ background: "var(--tertiary-accent-color,#e5e7eb)", borderColor: "var(--secondary-accent-color,#e5e7eb)" }} className="bg-white rounded-lg shadow-lg border overflow-hidden">
-                                {/* Table Header */}
                                 <div style={{ backgroundColor: "var(--primary-accent-color,#9333ea)" }}>
                                     <div className="grid gap-px" style={{ gridTemplateColumns: `repeat(${tableHeaders.length}, 1fr)` }}>
                                         {tableHeaders.map((header, index) => (
-                                            <div key={index} className="px-6 py-4 font-semibold text-center text-sm sm:text-base" style={{color:"var(--text-heading-color,#111827)"}}>
+                                            <div key={index} className="px-4 py-3 font-semibold text-center text-xs sm:text-sm" style={{color:"var(--text-heading-color,#111827)"}}>
                                                 {header}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Table Body */}
                                 <div className="divide-y divide-gray-200">
                                     {tableRows.map((row, rowIndex) => (
                                         <div 
                                             key={rowIndex} 
-                                            className={`grid gap-px ${rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} transition-colors duration-200`}
+                                            className={`grid gap-px ${rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
                                             style={{ gridTemplateColumns: `repeat(${tableHeaders.length}, 1fr)` }}
                                         >
                                             {row.slice(0, tableHeaders.length).map((cell, cellIndex) => (
                                                 <div
                                                     key={cellIndex}
-                                                    className="px-6 py-4 text-center text-sm sm:text-base"
+                                                    className="px-4 py-3 text-center text-xs sm:text-sm line-clamp-2"
                                                     style={{
                                                         color: "var(--text-body-color,#4b5563)",
                                                         background: cellIndex % 2 === 0
@@ -145,16 +145,12 @@ const TableInfoSlideLayout: React.FC<TableInfoSlideLayoutProps> = ({ data: slide
                                 </div>
                             </div>
                         </div>
-                        
                     </div>
 
-                    {/* Description Section */}
-                    <div className="text-center space-y-4">
-                        <div className="max-w-4xl mx-auto">
-                            <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                                {slideData?.description || 'This comparison shows our competitive position in the market. While we currently have a smaller market share, our growth rate significantly exceeds competitors, indicating strong potential for future expansion.'}
-                            </p>
-                        </div>
+                    <div className="text-center">
+                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-3 max-w-4xl mx-auto`}>
+                            {slideData?.description || 'This comparison shows our competitive position in the market. While we currently have a smaller market share, our growth rate significantly exceeds competitors, indicating strong potential for future expansion.'}
+                        </p>
                     </div>
                 </div>
             </div>

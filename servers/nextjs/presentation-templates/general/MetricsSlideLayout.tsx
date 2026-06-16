@@ -1,12 +1,16 @@
 import React from 'react'
 import * as z from "zod";
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+} from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'metrics-slide'
 export const layoutName = 'Metrics'
 export const layoutDescription = 'A slide layout for showcasing key business metrics with large numbers and descriptive text boxes. This should only be used with metrics and numbers.'
 
 const metricsSlideSchema = z.object({
-    title: z.string().min(3).max(100).default('Company Traction').meta({
+    title: z.string().min(3).max(40).default('Company Traction').meta({
         description: "Main title of the slide",
     }),
     metrics: z.array(z.object({
@@ -83,7 +87,7 @@ const MetricsSlideLayout: React.FC<MetricsSlideLayoutProps> = ({ data: slideData
             />
 
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden flex flex-col"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
                     background:"var(--card-background-color,#ffffff)"
@@ -119,38 +123,31 @@ const MetricsSlideLayout: React.FC<MetricsSlideLayoutProps> = ({ data: slideData
 
 
                 {/* Main Content */}
-                <div className="relative z-10 px-8 sm:px-12 lg:px-20 pt-10 pb-12 flex-1 flex flex-col justify-center">
-                    <div className="space-y-12">
-                        {/* Title */}
+                <div className="relative z-10 px-8 sm:px-12 lg:px-20 pt-10 pb-8 flex-1 flex flex-col justify-center min-h-0">
+                    <div className="space-y-8">
                         <div className="text-center">
-                            <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900">
+                            <h1 style={{ color: "var(--text-heading-color,#111827)" }} className={SLIDE_TITLE}>
                                 {slideData?.title || 'Company Traction'}
                             </h1>
                         </div>
 
-                        {/* Metrics Section */}
                         <div className="flex justify-center">
-                            {/* Metrics Layout - Each metric grouped vertically */}
-                            <div className={`${getLayoutClasses(metrics.length)} gap-6 lg:gap-8 place-content-center place-items-center`}>
+                            <div className={`${getLayoutClasses(metrics.length)} gap-4 lg:gap-6 place-content-center place-items-center`}>
                                 {metrics.map((metric, index) => (
-                                    <div key={index} className={`text-center space-y-4 ${getItemClasses(metrics.length)}`}>
-                                        {/* Label */}
-                                        <div className="text-sm text-gray-600 font-medium" style={{color:"var(--text-body-color,#ffffff)"}}>
+                                    <div key={index} className={`text-center space-y-2 ${getItemClasses(metrics.length)}`}>
+                                        <div className="text-xs font-medium line-clamp-2" style={{color:"var(--text-body-color,#4b5563)"}}>
                                             {metric.label}
                                         </div>
 
-                                        {/* Large Metric Value */}
-                                        <div style={{color:"var(--text-heading-color,#9333ea)"}} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-purple-600">
+                                        <div style={{color:"var(--text-heading-color,#9333ea)"}} className="text-2xl lg:text-3xl font-bold">
                                             {metric.value}
                                         </div>
 
-                                        {/* Description Box */}
                                         <div
-                                            className="bg-purple-50 rounded-lg p-4 lg:p-5 text-center mt-4"
+                                            className="rounded-lg p-3 text-center"
                                             style={{background:"var(--primary-accent-color,#9333ea)"}}
-                                            
                                         >
-                                            <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                                            <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs sm:text-sm leading-relaxed line-clamp-3">
                                                 {metric.description}
                                             </p>
                                         </div>

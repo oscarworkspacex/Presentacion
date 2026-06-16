@@ -188,6 +188,7 @@ class StreamingService:
                         presentation.tone,
                         presentation.verbosity,
                         presentation.instructions,
+                        presentation.content,
                     )
                 
                 slide = SlideModel(

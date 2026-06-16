@@ -1,6 +1,14 @@
 import React from 'react'
 import * as z from "zod";
 import { ImageSchema } from '@/presentation-templates/defaultSchemes';
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+    SLIDE_BODY,
+    SLIDE_ACCENT_LINE,
+    getTeamGridCols,
+    getTeamPhotoSize,
+} from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'team-slide'
 export const layoutName = 'Team Slide'
@@ -13,7 +21,7 @@ const teamMemberSchema = z.object({
     position: z.string().min(2).max(50).meta({
         description: "Job title or position"
     }),
-    description: z.string().max(150).meta({
+    description: z.string().max(180).meta({
         description: "Brief description of the team member (around 100 characters)"
     }),
     image: ImageSchema
@@ -23,10 +31,10 @@ const teamSlideSchema = z.object({
     title: z.string().min(3).max(40).default('Our Team Members').meta({
         description: "Main title of the slide",
     }),
-    companyDescription: z.string().min(10).max(150).default('Ginyard International Co. is a leading provider of innovative digital solutions tailored for businesses. Our mission is to empower organizations to achieve their goals through cutting-edge technology and strategic partnerships.').meta({
+    companyDescription: z.string().min(10).max(180).default('Ginyard International Co. is a leading provider of innovative digital solutions tailored for businesses. Our mission is to empower organizations to achieve their goals through cutting-edge technology and strategic partnerships.').meta({
         description: "Company description or team introduction text",
     }),
-    teamMembers: z.array(teamMemberSchema).min(2).max(4).default([
+    teamMembers: z.array(teamMemberSchema).min(1).max(4).default([
         {
             name: 'Juliana Silva',
             position: 'CEO',
@@ -77,35 +85,26 @@ interface TeamSlideLayoutProps {
 }
 
 const TeamSlideLayout: React.FC<TeamSlideLayoutProps> = ({ data: slideData }) => {
-    const teamMembers = slideData?.teamMembers || []
-
-    // Function to determine grid classes based on number of team members
-    const getGridClasses = (count: number) => {
-        if (count <= 2) {
-            return 'grid-cols-1 gap-6'
-        } else if (count <= 4) {
-            return 'grid-cols-2 gap-6'
-        } else {
-            return 'grid-cols-2 lg:grid-cols-3 gap-4'
-        }
-    }
+    const teamMembers = (slideData?.teamMembers || []).slice(0, 4)
+    const photoSize = getTeamPhotoSize(teamMembers.length)
+    const gridCols = getTeamGridCols(teamMembers.length)
 
     return (
         <>
-           <link
+            <link
                 href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
                 rel="stylesheet"
             />
-            
+
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
-                    background:"var(--card-background-color,#ffffff)"
+                    background: "var(--card-background-color,#ffffff)"
                 }}
             >
                 {(slideData as any)?.__companyName__ && (
-                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4">
+                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4 z-10">
                         <div className="flex items-center gap-4">
                             <span className="text-sm sm:text-base font-semibold" style={{ color: 'var(--text-heading-color, #111827)' }}>
                                 {(slideData as any)?.__companyName__ || 'Company Name'}
@@ -114,55 +113,65 @@ const TeamSlideLayout: React.FC<TeamSlideLayoutProps> = ({ data: slideData }) =>
                         </div>
                     </div>
                 )}
-                {/* Decorative Wave Pattern */}
-                <div className="absolute bottom-0 left-0 w-80 h-40 opacity-10 overflow-hidden">
+
+                <div className="absolute bottom-0 left-0 w-80 h-40 opacity-10 overflow-hidden pointer-events-none">
                     <svg className="w-full h-full" viewBox="0 0 300 150" fill="none">
                         <path d="M0 75C75 50 150 100 225 75C262.5 62.5 300 75 300 75V150H0V75Z" fill="#8b5cf6" opacity="0.3" />
                         <path d="M0 100C100 125 200 75 300 100V125C225 112.5 150 125 75 112.5L0 100Z" fill="#8b5cf6" opacity="0.2" />
                     </svg>
                 </div>
 
-                {/* Main Content */}
-                <div className="relative z-10 flex h-full px-8 sm:px-12 lg:px-20 pt-12 pb-8">
-                    {/* Left Section - Title and Company Description */}
-                    <div className="flex-1 flex flex-col justify-center pr-8 space-y-6">
-                        {/* Title */}
-                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                <div className="relative z-10 flex h-full px-8 sm:px-12 lg:px-20 pt-10 pb-6 items-center gap-8">
+                    <div className="flex-1 flex flex-col justify-center min-w-0 space-y-4">
+                        <h1
+                            style={{ color: "var(--text-heading-color,#111827)" }}
+                            className={SLIDE_TITLE}
+                        >
                             {slideData?.title || 'Our Team Members'}
                         </h1>
-
-                        {/* Purple accent line */}
-                        <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-20 h-1 bg-purple-600"></div>
-
-                        {/* Company Description */}
-                        <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-base sm:text-lg text-gray-700 leading-relaxed">
+                        <div
+                            style={{ background: "var(--primary-accent-color,#9333ea)" }}
+                            className={SLIDE_ACCENT_LINE}
+                        />
+                        <p
+                            style={{ color: "var(--text-body-color,#4b5563)" }}
+                            className={SLIDE_BODY}
+                        >
                             {slideData?.companyDescription || 'Ginyard International Co. is a leading provider of innovative digital solutions tailored for businesses. Our mission is to empower organizations to achieve their goals through cutting-edge technology and strategic partnerships.'}
                         </p>
                     </div>
 
-                    {/* Right Section - Team Members Grid */}
-                    <div className="flex-1 flex items-center justify-center pl-8">
-                        <div className={`grid ${getGridClasses(teamMembers.length)} w-full max-w-2xl`}>
+                    <div className={`flex-1 flex items-center justify-center ${teamMembers.length === 1 ? 'max-w-sm mx-auto' : ''}`}>
+                        <div className={`grid ${gridCols} gap-4 w-full max-w-2xl`}>
                             {teamMembers.map((member, index) => (
-                                <div key={index} className="text-center space-y-3">
-                                    {/* Member Photo */}
-                                    <div className="w-32 h-32 mx-auto rounded-lg overflow-hidden shadow-md" style={{background:"var(--tertiary-accent-color,#e5e7eb)"}}>
+                                <div key={index} className="text-center space-y-2">
+                                    <div
+                                        className={`${photoSize} mx-auto rounded-lg overflow-hidden shadow-md`}
+                                        style={{ background: "var(--tertiary-accent-color,#e5e7eb)" }}
+                                    >
                                         <img
                                             src={member.image.__image_url__ || ''}
                                             alt={member.image.__image_prompt__ || member.name}
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
-
-                                    {/* Member Info */}
                                     <div>
-                                        <h3 style={{color:"var(--text-heading-color,#111827)"}} className="text-lg font-semibold text-gray-900">
+                                        <h3
+                                            style={{ color: "var(--text-heading-color,#111827)" }}
+                                            className="text-base font-semibold line-clamp-1"
+                                        >
                                             {member.name}
                                         </h3>
-                                        <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-sm font-medium text-gray-600 italic mb-2">
+                                        <p
+                                            style={{ color: "var(--text-body-color,#4b5563)" }}
+                                            className="text-sm font-medium italic mb-1 line-clamp-1"
+                                        >
                                             {member.position}
                                         </p>
-                                        <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-xs text-gray-600 leading-relaxed px-2">
+                                        <p
+                                            style={{ color: "var(--text-body-color,#4b5563)" }}
+                                            className="text-sm leading-relaxed line-clamp-3 px-1"
+                                        >
                                             {member.description}
                                         </p>
                                     </div>
@@ -176,4 +185,4 @@ const TeamSlideLayout: React.FC<TeamSlideLayoutProps> = ({ data: slideData }) =>
     )
 }
 
-export default TeamSlideLayout 
+export default TeamSlideLayout

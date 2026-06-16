@@ -1,5 +1,6 @@
 import React from 'react'
 import * as z from "zod";
+import { SLIDE_CONTAINER, SLIDE_TITLE } from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'table-of-contents-slide'
 export const layoutName = 'Table of Contents'
@@ -10,13 +11,13 @@ const tableOfContentsSlideSchema = z.object({
         number: z.number().min(1).meta({
             description: "Section number"
         }),
-        title: z.string().min(1).max(80).meta({
+        title: z.string().min(1).max(50).meta({
             description: "Section title"
         }),
         pageNumber: z.string().min(1).max(10).meta({
             description: "Page number for this section"
         })
-    })).default([
+    })).min(1).max(10).default([
         { number: 1, title: "Problem", pageNumber: "03" },
         { number: 2, title: "Solution", pageNumber: "04" },
         { number: 3, title: "Product Overview", pageNumber: "05" },
@@ -41,27 +42,52 @@ interface TableOfContentsSlideLayoutProps {
 }
 
 const TableOfContentsSlideLayout: React.FC<TableOfContentsSlideLayoutProps> = ({ data: slideData }) => {
-    const sections = slideData?.sections || []
+    const sections = (slideData?.sections || []).slice(0, 10)
     const midPoint = Math.ceil(sections.length / 2)
     const leftSections = sections.slice(0, midPoint)
     const rightSections = sections.slice(midPoint)
 
+    const renderSection = (section: typeof sections[number]) => (
+        <div key={section.number} className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+                <div
+                    style={{ background: "var(--primary-accent-color,#9333ea)", color: "var(--text-heading-color,#ffffff)" }}
+                    className="w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center font-bold text-sm"
+                >
+                    {section.number}
+                </div>
+                <span
+                    style={{ color: "var(--text-heading-color,#111827)" }}
+                    className="text-sm font-medium line-clamp-1"
+                >
+                    {section.title}
+                </span>
+            </div>
+            <span
+                style={{ color: "var(--text-body-color,#4b5563)" }}
+                className="text-sm flex-shrink-0"
+            >
+                {section.pageNumber}
+            </span>
+        </div>
+    )
+
     return (
         <>
-           <link
+            <link
                 href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
                 rel="stylesheet"
             />
-            
-            <div 
-                className="w-full rounded-sm max-w-[1280px] shadow-lg px-8 sm:px-12 lg:px-20 py-8 sm:py-12 lg:py-16 max-h-[720px] aspect-video bg-white relative z-20 mx-auto"
+
+            <div
+                className={`${SLIDE_CONTAINER} bg-white px-8 sm:px-12 lg:px-20 py-6`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
-                    background:"var(--card-background-color,#ffffff)"
+                    background: "var(--card-background-color,#ffffff)"
                 }}
             >
                 {(slideData as any)?.__companyName__ && (
-                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4">
+                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4 z-10">
                         <div className="flex items-center gap-4">
                             <span className="text-sm sm:text-base font-semibold" style={{ color: 'var(--text-heading-color, #111827)' }}>
                                 {(slideData as any)?.__companyName__ || 'Company Name'}
@@ -71,80 +97,30 @@ const TableOfContentsSlideLayout: React.FC<TableOfContentsSlideLayoutProps> = ({
                     </div>
                 )}
 
-                {/* Title Section */}
-                <div className="text-center mb-8 sm:mb-12 mt-6">
-                    <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
-                        Table of Contents
-                    </h1>
-                    {/* Decorative Wave */}
-                    <div className="flex justify-center">
-                        <svg width="80" height="20" viewBox="0 0 80 20" className="text-purple-600" style={{color:"var(--primary-accent-color,#9333ea)"}}>
-                            <path
-                                d="M0 10 Q20 0 40 10 T80 10"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                fill="none"
-                            />
-                        </svg>
-                    </div>
-                </div>
-
-                {/* Content Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
-                    {/* Left Column */}
-                    <div className="space-y-4 sm:space-y-6">
-                        {leftSections.map((section) => (
-                            <div key={section.number} className="flex items-center justify-between group">
-                                <div className="flex items-center space-x-4">
-                                    {/* Number Box */}
-                                    <div style={{background:"var(--primary-accent-color,#9333ea)", color:"var(--text-heading-color,#ffffff)"}} className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg sm:text-xl group-hover:bg-purple-700 transition-colors">
-                                        {section.number}
-                                    </div>
-                                    {/* Title */}
-                                    <span style={{color:"var(--text-heading-color,#111827)"}} className="text-lg sm:text-xl font-medium text-gray-800 group-hover:text-purple-600 transition-colors">
-                                        {section.title}
-                                    </span>
-                                </div>
-                                {/* Page Number */}
-                                <div className="text-right">
-                                    <span style={{color:"var(--text-body-color,#4b5563)"}} className="text-lg sm:text-xl text-gray-600">
-                                        {section.pageNumber}
-                                    </span>
-                                    {/* Dotted line effect */}
-                                    <div style={{color:"var(--text-body-color,#4b5563)"}} className="text-gray-300 text-sm mt-1">
-                                        .....
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                <div className="flex flex-col h-full pt-6 min-h-0">
+                    <div className="text-center mb-6">
+                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className={SLIDE_TITLE}>
+                            Table of Contents
+                        </h1>
+                        <div className="flex justify-center mt-2">
+                            <svg width="60" height="16" viewBox="0 0 80 20" style={{ color: "var(--primary-accent-color,#9333ea)" }}>
+                                <path
+                                    d="M0 10 Q20 0 40 10 T80 10"
+                                    stroke="currentColor"
+                                    strokeWidth="3"
+                                    fill="none"
+                                />
+                            </svg>
+                        </div>
                     </div>
 
-                    {/* Right Column */}
-                    <div className="space-y-4 sm:space-y-6">
-                        {rightSections.map((section) => (
-                            <div key={section.number} className="flex items-center justify-between group">
-                                <div className="flex items-center space-x-4">
-                                    {/* Number Box */}
-                                    <div style={{background:"var(--primary-accent-color,#9333ea)", color:"var(--text-heading-color,#ffffff)"}} className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg sm:text-xl group-hover:bg-purple-700 transition-colors">
-                                        {section.number}
-                                    </div>
-                                    {/* Title */}
-                                    <span style={{color:"var(--text-heading-color,#111827)"}} className="text-lg sm:text-xl font-medium text-gray-800 group-hover:text-purple-600 transition-colors">
-                                        {section.title}
-                                    </span>
-                                </div>
-                                {/* Page Number */}
-                                <div className="text-right">
-                                    <span style={{color:"var(--text-body-color,#4b5563)"}} className="text-lg sm:text-xl text-gray-600">
-                                        {section.pageNumber}
-                                    </span>
-                                    {/* Dotted line effect */}
-                                    <div style={{color:"var(--text-body-color,#4b5563)"}} className="text-gray-300 text-sm mt-1">
-                                        .....
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 flex-1 min-h-0 content-start overflow-hidden">
+                        <div className="space-y-3">
+                            {leftSections.map(renderSection)}
+                        </div>
+                        <div className="space-y-3">
+                            {rightSections.map(renderSection)}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -152,4 +128,4 @@ const TableOfContentsSlideLayout: React.FC<TableOfContentsSlideLayoutProps> = ({
     )
 }
 
-export default TableOfContentsSlideLayout 
+export default TableOfContentsSlideLayout

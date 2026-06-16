@@ -2,6 +2,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Slide } from '../../types/slide';
 import { useRef } from 'react';
+import { isQuizSlide } from '../hooks/useGenerateQuestions';
+import QuizSlideThumbnail from '../../components/QuizSlideThumbnail';
 
 interface SortableSlideProps {
     slide: Slide;
@@ -56,9 +58,16 @@ export function SortableSlide({ slide, index, selectedSlide, onSlideClick, rende
         >
             <div className=" slide-box relative z-50  overflow-hidden aspect-video">
                 <div className="absolute bg-transparent z-50 top-0 left-0 w-full h-full" />
-                <div className="transform scale-[0.2] flex  pointer-events-none justify-center items-center origin-top-left  w-[500%] h-[500%]">
-                    {renderSlideContent(slide, false)}
-                </div>
+                {isQuizSlide(slide) ? (
+                    <QuizSlideThumbnail
+                        title={slide.content?.title}
+                        questionCount={slide.content?.customQuestions?.length ?? 5}
+                    />
+                ) : (
+                    <div className="transform scale-[0.2] flex  pointer-events-none justify-center items-center origin-top-left  w-[500%] h-[500%]">
+                        {renderSlideContent(slide, false)}
+                    </div>
+                )}
             </div>
         </div>
     );

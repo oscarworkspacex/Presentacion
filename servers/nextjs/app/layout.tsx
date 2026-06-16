@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import "./globals.css";
 import { Providers } from "./providers";
 import MixpanelInitializer from "./MixpanelInitializer";
-import { LayoutProvider } from "./(presentation-generator)/context/LayoutContext";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ApiKeyHandler } from "@/components/ApiKeyHandler";
@@ -93,9 +92,7 @@ export default function RootLayout({
             <AuthProvider>
               <Providers>
                 <MixpanelInitializer>
-                  <LayoutProvider>
-                    {children}
-                  </LayoutProvider>
+                  {children}
                 </MixpanelInitializer>
               </Providers>
             </AuthProvider>

@@ -1,196 +1,105 @@
 "use client";
-import React, { useState } from "react";
+
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, Loader2, Plus } from "lucide-react";
-import { toast } from "sonner";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store/store";
-import { addNewSlide } from "@/store/slices/presentationGeneration";
-import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
+import { useGenerateQuestions } from "../hooks/useGenerateQuestions";
 
 interface AddQuestionsButtonProps {
   presentation_id: string;
   disabled?: boolean;
+  variant?: "header" | "end-card" | "present-overlay";
+  onQuestionsAdded?: (quizSlideIndex: number) => void;
 }
 
 const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
   presentation_id,
   disabled = false,
+  variant = "header",
+  onQuestionsAdded,
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasQuestions, setHasQuestions] = useState<boolean | null>(null);
-  const dispatch = useDispatch();
-  const presentationData = useSelector(
-    (state: RootState) => state.presentationGeneration.presentationData
-  );
+  const {
+    isLoading,
+    hasQuestions,
+    generateQuestions,
+    regenerateQuestions,
+    goToQuiz,
+  } = useGenerateQuestions({
+    presentationId: presentation_id,
+    disabled,
+    onQuestionsAdded,
+  });
 
-  const checkQuestionsStatus = async () => {
-    try {
-      const response = await fetch('/api/v1/ppt/check-questions-slide', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(presentation_id),
-      });
+  if (variant === "end-card") {
+    return (
+      <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
+        {hasQuestions ? (
+          <>
+            <Button
+              onClick={regenerateQuestions}
+              disabled={disabled || isLoading}
+              variant="outline"
+              className="rounded-full px-6"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <HelpCircle className="w-4 h-4 mr-2" />
+              )}
+              {isLoading ? "Regenerando..." : "Regenerar preguntas"}
+            </Button>
+            <Button
+              onClick={goToQuiz}
+              disabled={disabled || isLoading}
+              className="rounded-full px-6 bg-[#5146E5] hover:bg-[#4338ca]"
+            >
+              Ir a la evaluaci?n
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={generateQuestions}
+            disabled={disabled || isLoading}
+            className="rounded-full px-8 bg-[#5146E5] hover:bg-[#4338ca]"
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4 mr-2" />
+            )}
+            {isLoading ? "Generando..." : "Generar preguntas"}
+          </Button>
+        )}
+      </div>
+    );
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        setHasQuestions(data.has_questions_slide);
-        return data;
-      } else {
-        throw new Error('Failed to check questions status');
-      }
-    } catch (error) {
-      console.error('Error checking questions status:', error);
-      return null;
-    }
-  };
+  if (variant === "present-overlay") {
+    if (hasQuestions) return null;
 
-  const addQuestionsSlide = async () => {
-    if (disabled || isLoading) return;
-
-    setIsLoading(true);
-    
-    try {
-      // First check if questions already exist
-      const status = await checkQuestionsStatus();
-      
-      if (status?.has_questions_slide) {
-        toast.info("¡Preguntas ya disponibles!", {
-          description: "Esta presentación ya tiene un slide de preguntas interactivas.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!status?.can_add_questions) {
-        toast.error("No se pueden agregar preguntas", {
-          description: status?.message || "No es posible agregar preguntas a esta presentación.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Add questions slide
-      const response = await fetch('/api/v1/ppt/add-questions-slide', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(presentation_id),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Add the new quiz slide directly to Redux so it's visible immediately
-        // without requiring a full page reload
-        if (data.slides && data.slides.length > 0 && presentationData?.slides) {
-          const quizSlide = data.slides[data.slides.length - 1];
-          dispatch(
-            addNewSlide({
-              slideData: quizSlide,
-              index: presentationData.slides.length - 1,
-            })
-          );
-        }
-
-        toast.success("¡Preguntas agregadas!", {
-          description: "Se ha agregado un slide interactivo de preguntas al final de tu presentación.",
-        });
-
-        // Track the event
-        trackEvent(MixpanelEvent.Presentation_Add_Questions_Slide);
-
-        setHasQuestions(true);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to add questions slide');
-      }
-    } catch (error: any) {
-      console.error('Error adding questions slide:', error);
-      
-      let errorMessage = "No se pudieron agregar las preguntas.";
-      let errorDescription = "Ocurrió un error inesperado. Por favor intenta de nuevo.";
-      
-      if (error.message.includes("already exists")) {
-        errorMessage = "¡Preguntas ya disponibles!";
-        errorDescription = "Esta presentación ya tiene un slide de preguntas.";
-        setHasQuestions(true);
-      } else if (error.message.includes("no slides")) {
-        errorMessage = "Presentación vacía";
-        errorDescription = "No se pueden agregar preguntas a una presentación sin slides.";
-      }
-      
-      toast.error(errorMessage, {
-        description: errorDescription,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const regenerateQuestionsSlide = async () => {
-    if (disabled || isLoading) return;
-
-    setIsLoading(true);
-    
-    try {
-      toast.info("Regenerando preguntas...", {
-        description: "Esto puede tomar unos segundos.",
-      });
-
-      // Regenerate questions slide
-      const response = await fetch('/api/v1/ppt/regenerate-questions-slide', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(presentation_id),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Force page reload to show new questions
-        // This ensures the component is fully recreated with new questions
-        window.location.reload();
-
-        toast.success("¡Preguntas regeneradas!", {
-          description: "Se han generado nuevas preguntas basadas en el contenido actual.",
-        });
-
-        // Track the event
-        trackEvent(MixpanelEvent.Presentation_Add_Questions_Slide);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to regenerate questions slide');
-      }
-    } catch (error: any) {
-      console.error('Error regenerating questions slide:', error);
-      
-      toast.error("No se pudieron regenerar las preguntas", {
-        description: "Ocurrió un error inesperado. Por favor intenta de nuevo.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Auto-check status on first render if not already checked
-  React.useEffect(() => {
-    if (hasQuestions === null && presentation_id) {
-      checkQuestionsStatus();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presentation_id]);
-
-  if (hasQuestions === true) {
-    // If questions already exist, show regenerate button
     return (
       <Button
-        onClick={regenerateQuestionsSlide}
+        onClick={(e) => {
+          e.stopPropagation();
+          generateQuestions();
+        }}
+        disabled={disabled || isLoading}
+        className="rounded-full px-6 bg-[#5146E5] hover:bg-[#4338ca] text-white shadow-lg"
+      >
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Plus className="w-4 h-4 mr-2" />
+        )}
+        {isLoading ? "Generando..." : "Generar preguntas"}
+      </Button>
+    );
+  }
+
+  if (hasQuestions) {
+    return (
+      <Button
+        onClick={regenerateQuestions}
         disabled={disabled || isLoading}
         variant="ghost"
         className="border border-white/70 font-bold text-white rounded-[32px] transition-all duration-300 group hover:bg-white hover:text-[#5146E5] disabled:opacity-50"
@@ -200,14 +109,14 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
         ) : (
           <HelpCircle className="w-4 h-4 mr-1 group-hover:text-[#5146E5]" />
         )}
-        {isLoading ? "Regenerando..." : "Regenerar Preguntas"}
+        {isLoading ? "Regenerando..." : "Regenerar preguntas"}
       </Button>
     );
   }
 
   return (
     <Button
-      onClick={addQuestionsSlide}
+      onClick={generateQuestions}
       disabled={disabled || isLoading}
       variant="ghost"
       className="border border-white font-bold text-white rounded-[32px] transition-all duration-300 group hover:bg-white hover:text-[#5146E5] disabled:opacity-50"
@@ -217,7 +126,7 @@ const AddQuestionsButton: React.FC<AddQuestionsButtonProps> = ({
       ) : (
         <Plus className="w-4 h-4 mr-1 group-hover:text-[#5146E5]" />
       )}
-      {isLoading ? "Agregando..." : "Agregar Preguntas"}
+      {isLoading ? "Generando..." : "Generar preguntas"}
     </Button>
   );
 };

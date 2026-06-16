@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import * as z from "zod";
 
 export const layoutId = 'questions-quiz-slide'
@@ -45,106 +45,48 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
     const [showResults, setShowResults] = useState(false);
-    const [questions, setQuestions] = useState<Question[]>([]);
 
-    const deduplicateQuestions = (items: Question[]): Question[] => {
-        const unique: Question[] = [];
+    const questionsSignature = useMemo(
+        () => JSON.stringify(slideData?.customQuestions ?? []),
+        [slideData?.customQuestions]
+    );
 
-        for (const item of items) {
-            const normalized = item.question.toLowerCase().replace(/[^\w\sáéíóúñ]/g, " ").replace(/\s+/g, " ").trim();
-            const isDuplicate = unique.some((existing) => {
-                const existingNormalized = existing.question
-                    .toLowerCase()
-                    .replace(/[^\w\sáéíóúñ]/g, " ")
-                    .replace(/\s+/g, " ")
-                    .trim();
-                return existingNormalized === normalized;
-            });
-
-            if (!isDuplicate) {
-                unique.push({ ...item, id: unique.length + 1 });
+    const questions = useMemo((): Question[] => {
+        try {
+            const parsed = JSON.parse(questionsSignature) as Array<{
+                id?: number;
+                question: string;
+                options: string[];
+                correctAnswer: number;
+                explanation: string;
+            }>;
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                return [];
             }
-        }
-
-        return unique;
-    };
-
-    // Usar preguntas generadas desde el contenido de la presentación
-    useEffect(() => {
-        console.log('');
-        console.log('='.repeat(80));
-        console.log('🎯 QuizSlideLayout - useEffect disparado');
-        console.log('='.repeat(80));
-        
-        if (slideData?.customQuestions && slideData.customQuestions.length > 0) {
-            console.log('✅ customQuestions encontradas:', slideData.customQuestions.length);
-            console.log('📊 slideData completo:', {
-                title: slideData.title,
-                description: slideData.description,
-                numQuestions: slideData.customQuestions?.length,
-                presentationContentLength: slideData.presentationContent?.length
-            });
-            
-            console.log('');
-            console.log('📝 PREGUNTAS RECIBIDAS DEL BACKEND:');
-            slideData.customQuestions.forEach((q, i) => {
-                console.log(`\n   Pregunta #${i + 1}:`);
-                console.log(`      Texto: ${q.question}`);
-                console.log(`      Opciones:`, q.options);
-                console.log(`      Correcta: [${q.correctAnswer}] ${q.options[q.correctAnswer]}`);
-                console.log(`      Explicación: ${q.explanation?.substring(0, 100)}...`);
-            });
-            
-            const mappedQuestions = slideData.customQuestions.map((q, index) => ({
-                id: (q as any).id || index + 1,
+            return parsed.map((q, index) => ({
+                id: q.id ?? index + 1,
                 question: q.question,
-                options: q.options,
+                options: [...q.options],
                 correctAnswer: q.correctAnswer,
-                explanation: q.explanation
+                explanation: q.explanation,
             }));
-
-            console.log('');
-            console.log('🔄 Preguntas después de mapear:', mappedQuestions.length);
-            mappedQuestions.forEach((q, i) => {
-                console.log(`   ${i + 1}. ${q.question.substring(0, 60)}...`);
-            });
-
-            const uniqueQuestions = deduplicateQuestions(mappedQuestions);
-            
-            console.log('');
-            console.log('🔍 Preguntas después de deduplicar:', uniqueQuestions.length);
-            if (uniqueQuestions.length !== mappedQuestions.length) {
-                console.warn(`⚠️  Se eliminaron ${mappedQuestions.length - uniqueQuestions.length} preguntas duplicadas`);
-            }
-            uniqueQuestions.forEach((q, i) => {
-                console.log(`   ${i + 1}. ${q.question.substring(0, 60)}...`);
-            });
-
-            // ACTUALIZAR DIRECTAMENTE - sin comparación de hash que bloquee
-            console.log('');
-            console.log('✅ ACTUALIZANDO PREGUNTAS (sin comparación de hash)');
-            setQuestions(uniqueQuestions);
-            setSelectedAnswers(new Array(uniqueQuestions.length).fill(-1));
-            setCurrentQuestion(0);
-            setShowResults(false);
-            console.log('='.repeat(80));
-            console.log('');
-        } else {
-            console.log('❌ NO hay customQuestions en slideData');
-            console.log('slideData recibido:', slideData);
-            console.log('='.repeat(80));
-            console.log('');
-            setQuestions([]);
-            setSelectedAnswers([]);
-            setCurrentQuestion(0);
-            setShowResults(false);
+        } catch {
+            return [];
         }
-    }, [slideData?.customQuestions]);
+    }, [questionsSignature]);
+
+    useEffect(() => {
+        setCurrentQuestion(0);
+        setSelectedAnswers(new Array(questions.length).fill(-1));
+        setShowResults(false);
+    }, [questionsSignature, questions.length]);
 
     const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
-        const newAnswers = [...selectedAnswers];
-        newAnswers[questionIndex] = answerIndex;
-        setSelectedAnswers(newAnswers);
+        setSelectedAnswers((prev) => {
+            const next = [...prev];
+            next[questionIndex] = answerIndex;
+            return next;
+        });
     };
 
     const calculateScore = () => {
@@ -165,11 +107,12 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
         return "Necesitas estudiar más el contenido presentado.";
     };
 
-    const canFinishQuiz = selectedAnswers.every(answer => answer !== -1);
+    const canFinishQuiz = selectedAnswers.length === questions.length &&
+        selectedAnswers.every((answer) => answer !== -1);
 
     if (questions.length === 0) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+            <div data-interactive="true" className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
                 <div className="max-w-xl bg-white rounded-xl shadow-lg p-8 text-center">
                     <h2 className="text-2xl font-bold text-gray-800 mb-3">
                         Preguntas no disponibles
@@ -187,7 +130,7 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
         const percentage = (score / questions.length) * 100;
 
         return (
-            <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-8">
+            <div data-interactive="true" className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-8">
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-white rounded-xl shadow-lg p-8 text-center">
                         <h1 className="text-3xl font-bold text-gray-800 mb-4">
@@ -210,7 +153,7 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                             <h3 className="text-lg font-semibold mb-4">Resumen de respuestas:</h3>
                             <div className="space-y-2">
                                 {questions.map((question, index) => (
-                                    <div key={`summary-${index}-${question.question.substring(0, 20)}`} className="flex items-center justify-between">
+                                    <div key={`summary-${index}-${question.id}`} className="flex items-center justify-between">
                                         <span className="text-sm">Pregunta {index + 1}:</span>
                                         <span className={`text-sm font-medium ${
                                             selectedAnswers[index] === question.correctAnswer
@@ -225,8 +168,8 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                         </div>
 
                         <button
+                            type="button"
                             onClick={() => {
-                                // Reset state de manera estable
                                 setCurrentQuestion(0);
                                 setSelectedAnswers(new Array(questions.length).fill(-1));
                                 setShowResults(false);
@@ -244,10 +187,13 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
     const currentQ = questions[currentQuestion];
     const progress = ((currentQuestion + 1) / questions.length) * 100;
 
+    if (!currentQ) {
+        return null;
+    }
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+        <div data-interactive="true" className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
             <div className="max-w-2xl mx-auto">
-                {/* Header */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                     <div className="flex justify-between items-center mb-4">
                         <h1 className="text-2xl font-bold text-gray-800">
@@ -258,7 +204,6 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                         </span>
                     </div>
 
-                    {/* Progress Bar */}
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
                         <div
                             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -271,7 +216,6 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                     </p>
                 </div>
 
-                {/* Question Card */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-6">
                         {currentQ.question}
@@ -280,7 +224,8 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                     <div className="space-y-3">
                         {currentQ.options.map((option, index) => (
                             <button
-                                key={`q${currentQuestion}-opt${index}-${option.substring(0, 10)}`}
+                                type="button"
+                                key={`q${currentQuestion}-opt${index}`}
                                 onClick={() => handleAnswerSelect(currentQuestion, index)}
                                 className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
                                     selectedAnswers[currentQuestion] === index
@@ -289,7 +234,7 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                                 }`}
                             >
                                 <div className="flex items-center">
-                                    <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                                    <div className={`w-4 h-4 rounded-full border-2 mr-3 shrink-0 ${
                                         selectedAnswers[currentQuestion] === index
                                             ? 'border-blue-500 bg-blue-500'
                                             : 'border-gray-300'
@@ -313,9 +258,9 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                     )}
                 </div>
 
-                {/* Navigation */}
                 <div className="flex justify-between">
                     <button
+                        type="button"
                         onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                         disabled={currentQuestion === 0}
                         className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -325,7 +270,8 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
 
                     {currentQuestion < questions.length - 1 ? (
                         <button
-                            onClick={() => setCurrentQuestion(currentQuestion + 1)}
+                            type="button"
+                            onClick={() => setCurrentQuestion((prev) => prev + 1)}
                             disabled={selectedAnswers[currentQuestion] === -1}
                             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -333,6 +279,7 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                         </button>
                     ) : (
                         <button
+                            type="button"
                             onClick={() => setShowResults(true)}
                             disabled={!canFinishQuiz}
                             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"

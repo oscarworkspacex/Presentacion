@@ -23,6 +23,8 @@ import { setPresentationData } from "@/store/slices/presentationGeneration";
 import { SortableSlide } from "./SortableSlide";
 import { SortableListItem } from "./SortableListItem";
 import { useGroupLayouts } from "../../hooks/useGroupLayouts";
+import { isQuizSlide } from "../hooks/useGenerateQuestions";
+import QuizSlideThumbnail from "../../components/QuizSlideThumbnail";
 
 interface SidePanelProps {
   selectedSlide: number;
@@ -278,9 +280,16 @@ const SidePanel = ({
                     >
                       <div className=" bg-white pointer-events-none  relative overflow-hidden aspect-video">
                         <div className="absolute bg-gray-100/5 z-50  top-0 left-0 w-full h-full" />
-                        <div className="transform scale-[0.2] flex justify-center items-center origin-top-left  w-[500%] h-[500%]">
-                          {renderSlideContent(slide, false)}
-                        </div>
+                        {isQuizSlide(slide) ? (
+                          <QuizSlideThumbnail
+                            title={slide.content?.title}
+                            questionCount={slide.content?.customQuestions?.length ?? 5}
+                          />
+                        ) : (
+                          <div className="transform scale-[0.2] flex justify-center items-center origin-top-left  w-[500%] h-[500%]">
+                            {renderSlideContent(slide, false)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))

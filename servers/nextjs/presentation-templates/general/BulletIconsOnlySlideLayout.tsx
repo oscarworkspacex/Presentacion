@@ -2,6 +2,13 @@ import React from 'react'
 import * as z from "zod";
 import { ImageSchema, IconSchema } from '@/presentation-templates/defaultSchemes';
 import { RemoteSvgIcon } from '@/app/hooks/useRemoteSvgIcon';
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+    SLIDE_SUBTITLE,
+    SLIDE_IMAGE_SIDE,
+    getBulletGridCols,
+} from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'bullet-icons-only-slide'
 export const layoutName = 'Bullet Icons Only'
@@ -50,14 +57,6 @@ const bulletIconsOnlySlideSchema = z.object({
                 __icon_query__: 'headphones support service'
             }
         },
-        {
-            title: 'Scalable Marketing',
-            subtitle: 'Our data-driven strategies help businesses expand their reach and engagement.',
-            icon: {
-                __icon_url__: 'https://presenton-public.s3.ap-southeast-1.amazonaws.com/static/icons/bold/code-bold.svg',
-                __icon_query__: 'trending up marketing growth'
-            }
-        }
     ]).meta({
         description: "List of bullet points with icons and optional subtitles",
     })
@@ -72,37 +71,25 @@ interface BulletIconsOnlySlideLayoutProps {
 }
 
 const BulletIconsOnlySlideLayout: React.FC<BulletIconsOnlySlideLayoutProps> = ({ data: slideData }) => {
-    const bulletPoints = slideData?.bulletPoints || []
-
-    // Function to determine grid classes based on number of bullets
-    const getGridClasses = (count: number) => {
-        if (count <= 2) {
-            return 'grid-cols-1 gap-6'
-        } else if (count <= 4) {
-            return 'grid-cols-2 gap-6'
-        } else {
-            return 'grid-cols-2 lg:grid-cols-3 gap-6'
-        }
-    }
+    const bulletPoints = (slideData?.bulletPoints || []).slice(0, 3)
+    const bulletGridCols = getBulletGridCols(bulletPoints.length)
 
     return (
         <>
-            {/* Import Google Fonts */}
             <link
                 href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
                 rel="stylesheet"
-            />            
-            
+            />
 
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
-                    background:"var(--card-background-color,#ffffff)"
+                    background: "var(--card-background-color,#ffffff)"
                 }}
             >
-                {/* {(slideData as any)?.__companyName__ && ( */}
-                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4">
+                {(slideData as any)?.__companyName__ && (
+                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4 z-10">
                         <div className="flex items-center gap-4">
                             <span className="text-sm sm:text-base font-semibold" style={{ color: 'var(--text-heading-color, #111827)' }}>
                                 {(slideData as any)?.__companyName__ || 'Company Name'}
@@ -110,55 +97,51 @@ const BulletIconsOnlySlideLayout: React.FC<BulletIconsOnlySlideLayoutProps> = ({
                             <div className="h-[2px] flex-1 opacity-70" style={{ backgroundColor: 'var(--text-heading-color, #111827)' }}></div>
                         </div>
                     </div>
-                {/* )} */}
-                {/* Decorative Wave Patterns */}
-                <div className="absolute top-0 left-0 w-32 h-full opacity-10 overflow-hidden">
+                )}
+
+                <div className="absolute top-0 left-0 w-32 h-full opacity-10 overflow-hidden pointer-events-none">
                     <svg className="w-full h-full" viewBox="0 0 100 400" fill="none">
                         <path d="M0 100C25 150 50 50 75 100C87.5 125 100 100 100 100V0H0V100Z" fill="#8b5cf6" opacity="0.4" />
                         <path d="M0 200C37.5 250 62.5 150 100 200V150C75 175 50 150 25 175L0 200Z" fill="#8b5cf6" opacity="0.3" />
                     </svg>
                 </div>
 
-                <div className="absolute bottom-0 left-0 w-48 h-32 opacity-10 overflow-hidden">
-                    <svg className="w-full h-full" viewBox="0 0 200 100" fill="none">
-                        <path d="M0 50C50 25 100 75 150 50C175 37.5 200 50 200 50V100H0V50Z" fill="#8b5cf6" opacity="0.2" />
-                    </svg>
-                </div>
-
-                {/* Main Content */}
-                <div className="relative z-10 flex h-full px-8 sm:px-12 lg:px-20 pt-12 pb-8">
-                    {/* Left Section - Title and Bullet Points */}
-                    <div className="flex-1 flex flex-col pr-8">
-                        {/* Title */}
-                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-8">
+                <div className="relative z-10 flex h-full px-8 sm:px-12 lg:px-20 pt-10 pb-6 items-center gap-6">
+                    <div className="flex-1 flex flex-col min-h-0 min-w-0">
+                        <h1
+                            style={{ color: "var(--text-heading-color,#111827)" }}
+                            className={`${SLIDE_TITLE} mb-4`}
+                        >
                             {slideData?.title || 'Solutions'}
                         </h1>
 
-                        {/* Bullet Points Grid */}
-                        <div className={`grid ${getGridClasses(bulletPoints.length)} flex-1 content-center`}>
+                        <div className={`grid ${bulletGridCols} gap-4 flex-1 min-h-0 content-center`}>
                             {bulletPoints.map((bullet, index) => (
-                                <div
-                                    key={index}
-                                    className={`flex items-start space-x-4 p-4 rounded-lg`}
-                                >
-                                    {/* Icon */}
-                                    <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center">
+                                <div key={index} className="flex items-start gap-3">
+                                    <div
+                                        style={{ background: "var(--primary-accent-color,#9333ea)" }}
+                                        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                                    >
                                         <RemoteSvgIcon
                                             url={bullet.icon.__icon_url__}
                                             strokeColor={"currentColor"}
-                                            className="w-6 h-6"
+                                            className="w-5 h-5"
                                             color="var(--text-heading-color,#ffffff)"
                                             title={bullet.icon.__icon_query__}
                                         />
                                     </div>
-
-                                    {/* Content */}
-                                    <div className="flex-1">
-                                        <h3 style={{color:"var(--text-heading-color,#111827)"}} className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
+                                    <div className="flex-1 min-w-0">
+                                        <h3
+                                            style={{ color: "var(--text-heading-color,#111827)" }}
+                                            className={SLIDE_SUBTITLE}
+                                        >
                                             {bullet.title}
                                         </h3>
                                         {bullet.subtitle && (
-                                            <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-sm text-gray-700 leading-relaxed">
+                                            <p
+                                                style={{ color: "var(--text-body-color,#4b5563)" }}
+                                                className="text-sm lg:text-base leading-relaxed line-clamp-2 mt-1"
+                                            >
                                                 {bullet.subtitle}
                                             </p>
                                         )}
@@ -168,32 +151,20 @@ const BulletIconsOnlySlideLayout: React.FC<BulletIconsOnlySlideLayoutProps> = ({
                         </div>
                     </div>
 
-                    {/* Right Section - Image */}
-                    <div className="flex-shrink-0 w-96 flex items-center justify-center relative">
-                        {/* Decorative Elements */}
-                        <div style={{color:"var(--primary-accent-color,#9333ea)"}} className="absolute top-8 right-8 text-purple-600 opacity-60">
-                            <svg width="32" height="32" viewBox="0 0 32 32" fill="currentColor">
+                    <div className="flex-shrink-0 w-80 flex items-center justify-center relative">
+                        <div
+                            style={{ color: "var(--primary-accent-color,#9333ea)" }}
+                            className="absolute top-4 right-4 opacity-60 pointer-events-none"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 32 32" fill="currentColor">
                                 <path d="M16 0l4.12 8.38L28 12l-7.88 3.62L16 24l-4.12-8.38L4 12l7.88-3.62L16 0z" />
                             </svg>
                         </div>
-
-                        <div className="absolute top-16 left-8 opacity-20">
-                            <svg width="80" height="20" viewBox="0 0 80 20" className="text-purple-600" style={{color:"var(--primary-accent-color,#9333ea)"}}>
-                                <path
-                                    d="M0 10 Q20 0 40 10 T80 10"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    fill="none"
-                                />
-                            </svg>
-                        </div>
-
-                        {/* Main Image */}
-                        <div className="w-full h-80 rounded-2xl overflow-hidden shadow-lg">
+                        <div className="w-full max-h-[300px] rounded-2xl overflow-hidden shadow-lg">
                             <img
                                 src={slideData?.image?.__image_url__ || ''}
                                 alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
-                                className="w-full h-full object-cover"
+                                className={SLIDE_IMAGE_SIDE}
                             />
                         </div>
                     </div>
@@ -203,4 +174,4 @@ const BulletIconsOnlySlideLayout: React.FC<BulletIconsOnlySlideLayoutProps> = ({
     )
 }
 
-export default BulletIconsOnlySlideLayout 
+export default BulletIconsOnlySlideLayout

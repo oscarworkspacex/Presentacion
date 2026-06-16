@@ -11,8 +11,6 @@ import { toast } from "sonner";
 import * as z from "zod";
 import { useDispatch } from "react-redux";
 import { setLayoutLoading } from "@/store/slices/presentationGeneration";
-import * as Babel from "@babel/standalone";
-import * as Recharts from "recharts";
 export interface LayoutInfo {
   id: string;
   name?: string;
@@ -80,8 +78,14 @@ const createCacheKey = (groupName: string, fileName: string): string =>
   `${groupName}/${fileName}`;
 
 // Extract Babel compilation logic into a utility function
-const compileCustomLayout = (layoutCode: string, React: any, z: any) => {
-  
+const compileCustomLayout = async (layoutCode: string, React: any, z: any) => {
+  const [BabelModule, RechartsModule] = await Promise.all([
+    import("@babel/standalone"),
+    import("recharts"),
+  ]);
+  const Babel = BabelModule.default ?? BabelModule;
+  const Recharts = RechartsModule.default ?? RechartsModule;
+
   const cleanCode = layoutCode
     .replace(/import\s+React\s+from\s+'react';?/g, "")
     .replace(/import\s*{\s*z\s*}\s*from\s+'zod';?/g, "")
@@ -394,7 +398,7 @@ export const LayoutProvider: React.FC<{
         for (const i of allLayout) {
           try {
             /* ---------- 1. compile JSX to plain script ------------------ */
-            const module = compileCustomLayout(i.layout_code, React, z);
+            const module = await compileCustomLayout(i.layout_code, React, z);
 
             // Determine identifiers even if subsequent steps fail
             const originalLayoutId =

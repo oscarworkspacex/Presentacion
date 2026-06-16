@@ -27,11 +27,13 @@ def get_system_prompt(
         {verbosity or ""}
 
         # Steps
-        1. Analyze the outline.
-        2. Generate structured slide based on the outline.
-        3. Generate speaker note that is simple, clear, concise and to the point.
+        1. Analyze the outline and any source context provided.
+        2. Generate structured slide based on the outline, using specific facts, data, and key concepts.
+        3. Generate speaker note that expands on the slide with additional detail for the presenter.
 
         # Notes
+        - Prioritize substantive, informative content: include concrete data, examples, statistics, and key concepts from the outline.
+        - Use the maximum allowed character limit for each field — do not leave fields unnecessarily short.
         - Slide body should not use words like "This slide", "This presentation".
         - Rephrase the slide body to make it flow naturally.
         - Only use markdown to highlight important points.
@@ -45,9 +47,9 @@ def get_system_prompt(
         - Do not add emoji in the content.
         - Metrics should be in abbreviated form with least possible characters. Do not add long sequence of words for metrics.
         - For verbosity:
-            - If verbosity is 'concise', then generate description as 1/3 or lower of the max character limit. Don't worry if you miss content or context.
-            - If verbosity is 'standard', then generate description as 2/3 of the max character limit.
-            - If verbosity is 'text-heavy', then generate description as 3/4 or higher of the max character limit. Make sure it does not exceed the max character limit.
+            - If verbosity is 'concise', then generate description as approximately 1/2 of the max character limit while keeping the most important facts.
+            - If verbosity is 'standard', then generate description as 85-90% of the max character limit.
+            - If verbosity is 'text-heavy', then generate description as 95% or higher of the max character limit. Make sure it does not exceed the max character limit.
 
         User instructions, tone and verbosity should always be followed and should supercede any other instruction, except for max and min character limit, slide schema and number of items.
 
@@ -64,7 +66,14 @@ def get_system_prompt(
     """
 
 
-def get_user_prompt(outline: str, language: str):
+def get_user_prompt(outline: str, language: str, source_context: Optional[str] = None):
+    source_section = ""
+    if source_context and source_context.strip():
+        source_section = f"""
+        ## Presentation Source Context
+        {source_context[:3000]}
+        """
+
     return f"""
         ## Current Date and Time
         {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -74,7 +83,7 @@ def get_user_prompt(outline: str, language: str):
 
         ## Slide Content Language
         {language}
-
+        {source_section}
         ## Slide Outline
         {outline}
     """
@@ -86,6 +95,7 @@ def get_messages(
     tone: Optional[str] = None,
     verbosity: Optional[str] = None,
     instructions: Optional[str] = None,
+    source_context: Optional[str] = None,
 ):
 
     return [
@@ -93,7 +103,7 @@ def get_messages(
             content=get_system_prompt(tone, verbosity, instructions),
         ),
         LLMUserMessage(
-            content=get_user_prompt(outline, language),
+            content=get_user_prompt(outline, language, source_context),
         ),
     ]
 
@@ -105,6 +115,7 @@ async def get_slide_content_from_type_and_outline(
     tone: Optional[str] = None,
     verbosity: Optional[str] = None,
     instructions: Optional[str] = None,
+    source_context: Optional[str] = None,
 ):
     client = LLMClient()
     model = get_model()
@@ -134,6 +145,7 @@ async def get_slide_content_from_type_and_outline(
                 tone,
                 verbosity,
                 instructions,
+                source_context,
             ),
             response_format=response_schema,
             strict=False,

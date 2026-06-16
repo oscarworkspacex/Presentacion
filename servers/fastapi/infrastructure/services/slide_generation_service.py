@@ -5,6 +5,7 @@ regular slides and special slide types like questions.
 """
 
 import asyncio
+import copy
 from typing import List, Optional
 
 from core.logging import get_logger
@@ -51,6 +52,7 @@ class SlideGenerationService:
         presentation_id: any,
         layout_group_name: str,
         start_index: int = 0,
+        source_context: Optional[str] = None,
     ) -> List[SlideModel]:
         """Generate a batch of slides concurrently.
 
@@ -79,6 +81,7 @@ class SlideGenerationService:
                 tone,
                 verbosity,
                 instructions,
+                source_context,
             )
             for i in range(len(slide_layouts))
         ]
@@ -161,7 +164,7 @@ class SlideGenerationService:
             "presentationContent": presentation_content,
             "title": "🎯 Evaluación de Conocimientos",
             "description": "Responde las siguientes preguntas para evaluar tu comprensión del contenido presentado.",
-            "customQuestions": questions,
+            "customQuestions": copy.deepcopy(questions),
             "__speaker_note__": "Esta es una evaluación interactiva basada en el contenido de la presentación.",
         }
 

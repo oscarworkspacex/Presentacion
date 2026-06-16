@@ -550,23 +550,20 @@ async def generate_questions_from_presentation_content(
         language,
     )
 
-    if len(per_slide_questions) >= min(num_questions, len(slide_chunks)):
-        logger.info(f"Generated {len(per_slide_questions)} unique per-slide questions")
-        return per_slide_questions[:num_questions]
-
-    # Completar faltantes con fallback por slide
     existing_texts = [q["question"] for q in per_slide_questions]
-    for index, chunk in enumerate(slide_chunks):
-        if len(per_slide_questions) >= num_questions:
-            break
-        fallback = _build_fallback_question_for_slide(index, chunk, language)
-        if not fallback:
-            continue
-        if any(_question_similarity(fallback["question"], existing) >= 0.55 for existing in existing_texts):
-            continue
-        fallback["id"] = len(per_slide_questions) + 1
-        per_slide_questions.append(fallback)
-        existing_texts.append(fallback["question"])
+
+    if len(per_slide_questions) < num_questions:
+        for index, chunk in enumerate(slide_chunks):
+            if len(per_slide_questions) >= num_questions:
+                break
+            fallback = _build_fallback_question_for_slide(index, chunk, language)
+            if not fallback:
+                continue
+            if any(_question_similarity(fallback["question"], existing) >= 0.55 for existing in existing_texts):
+                continue
+            fallback["id"] = len(per_slide_questions) + 1
+            per_slide_questions.append(fallback)
+            existing_texts.append(fallback["question"])
 
     final_questions = deduplicate_questions(per_slide_questions)[:num_questions]
     for index, question in enumerate(final_questions):
@@ -576,12 +573,60 @@ async def generate_questions_from_presentation_content(
         raise ValueError("Could not generate unique questions from presentation content")
 
     logger.info(f"Successfully generated {len(final_questions)} unique questions")
+    for i, q in enumerate(final_questions, 1):
+        logger.info(f"  Final Q{i}: {q.get('question', '')}")
+
     return final_questions
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fallback: preguntas basadas en análisis del texto (sin LLM)
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _build_slide_specific_question(
+    slide_index: int,
+    chunk: str,
+    facts: List[Dict[str, str]],
+    language: str,
+) -> str:
+    """Construye un enunciado único según los hechos detectados en el slide."""
+    slide_num = slide_index + 1
+
+    for fact in facts:
+        fact_type = fact.get("type")
+        value = fact.get("value", "")
+
+        if fact_type == "formation":
+            if language == "es":
+                return f"¿Qué formación táctica se menciona en el slide {slide_num}?"
+            return f"What tactical formation is mentioned in slide {slide_num}?"
+
+        if fact_type == "duration":
+            if language == "es":
+                return f"¿Cuánto dura el segmento o actividad descrita en el slide {slide_num}?"
+            return f"How long is the segment or activity described in slide {slide_num}?"
+
+        if fact_type == "players":
+            if language == "es":
+                return f"¿Cuántos jugadores por equipo se indican en el slide {slide_num}?"
+            return f"How many players per team are indicated in slide {slide_num}?"
+
+        if fact_type == "number":
+            if language == "es":
+                return f"¿Qué cifra numérica clave aparece en el slide {slide_num}?"
+            return f"What key numeric figure appears in slide {slide_num}?"
+
+    sentences = [s.strip() for s in re.split(r'[.!?]\s+', chunk) if len(s.strip()) >= 20]
+    if sentences:
+        topic = sentences[0][:80].rstrip(".")
+        if language == "es":
+            return f"Según el slide {slide_num}, ¿qué afirmación resume mejor este contenido: \"{topic}...\"?"
+        return f"According to slide {slide_num}, which statement best summarizes: \"{topic}...\"?"
+
+    if language == "es":
+        return f"¿Qué idea principal se presenta en el slide {slide_num}?"
+    return f"What is the main idea presented in slide {slide_num}?"
+
 
 def _build_fallback_question_for_slide(
     slide_index: int,
@@ -590,54 +635,49 @@ def _build_fallback_question_for_slide(
 ) -> Optional[Dict[str, Any]]:
     """
     Fallback simple: extrae hechos del slide y crea una pregunta de afirmación.
-    Sin templates hardcodeados - funcionará para cualquier tema.
+    Cada slide produce un enunciado distinto basado en su contenido.
     """
-    # Extraer oraciones/hechos del contenido
     sentences = [s.strip() for s in re.split(r'[.!?]\s+', chunk) if len(s.strip()) >= 20]
-    
+
     if not sentences:
         return None
-    
-    # Tomar la primera oración como hecho verdadero
+
+    facts = _extract_facts_from_slide(chunk)
     true_statement = sentences[0][:120]
-    
-    # Crear la pregunta de forma universal
+    question = _build_slide_specific_question(slide_index, chunk, facts, language)
+
     if language == "es":
-        question = "Según el contenido presentado en este slide, ¿cuál de las siguientes afirmaciones es correcta?"
         explanation = f"El slide indica que: {true_statement}"
         false_prefix = "Esta información no aparece en el contenido"
     else:
-        question = "According to the content presented in this slide, which of the following statements is correct?"
         explanation = f"The slide states that: {true_statement}"
         false_prefix = "This information does not appear in the content"
-    
-    # Opciones: la verdadera + otras oraciones del slide como distractores
+
     options = [true_statement]
-    
-    # Agregar otras oraciones como distractores si existen
+
     for sent in sentences[1:4]:
         if sent != true_statement and len(sent) >= 15:
             options.append(sent[:120])
-    
-    # Completar con opciones genéricas si faltan
+
     while len(options) < 4:
         options.append(f"{false_prefix} ({len(options)})")
-    
-    # Eliminar duplicados y limitar a 4
+
     options = list(dict.fromkeys(options))[:4]
-    
+
+    while len(options) < 4:
+        options.append(f"{false_prefix} ({len(options)})")
+
     question_data = {
         "id": slide_index + 1,
         "question": question,
         "options": options,
-        "correctAnswer": 0,  # La primera opción es siempre la correcta
+        "correctAnswer": 0,
         "explanation": explanation,
     }
-    
-    # Validación básica
+
     if len(question_data["options"]) != 4:
         return None
-    
+
     return question_data
 
 

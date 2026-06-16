@@ -31,7 +31,10 @@ def get_system_prompt(
 
         - Provide content for each slide in markdown format.
         - Make sure that flow of the presentation is logical and consistent.
-        - Place greater emphasis on numerical data.
+        - Place greater emphasis on numerical data, concrete facts, dates, names, and key concepts.
+        - Each slide must deliver a specific insight about the topic — avoid generic filler phrases.
+        - Include important information: causes, effects, examples, statistics, and actionable takeaways.
+        - Prioritize substantive content over brevity; pack each outline with the most relevant facts.
         - If Additional Information is provided, divide it into slides.
         - Make sure no images are provided in the content.
         - Make sure that content follows language guidelines.

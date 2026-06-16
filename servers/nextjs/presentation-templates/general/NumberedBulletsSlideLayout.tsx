@@ -1,6 +1,12 @@
 import React from 'react'
 import * as z from "zod";
 import { ImageSchema } from '@/presentation-templates/defaultSchemes';
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+    SLIDE_SUBTITLE,
+    SLIDE_IMAGE_COMPACT,
+} from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'numbered-bullets-slide'
 export const layoutName = 'Numbered Bullets'
@@ -66,7 +72,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
             />
 
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
                     background:"var(--card-background-color,#ffffff)"
@@ -88,7 +94,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                         <div className="flex-1 min-w-0">
                             <h1
                                 style={{ color: "var(--text-heading-color,#111827)" }}
-                                className="text-3xl lg:text-4xl font-bold leading-tight line-clamp-2 mb-3"
+                                className={`${SLIDE_TITLE} mb-3`}
                             >
                                 {slideData?.title || 'Market Validation'}
                             </h1>
@@ -102,7 +108,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                             <img
                                 src={slideData?.image?.__image_url__ || ''}
                                 alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
-                                className="w-full h-full object-cover rounded-lg shadow-md"
+                                className={SLIDE_IMAGE_COMPACT}
                                 style={{ background: "var(--tertiary-accent-color,#e5e7eb)" }}
                             />
                         </div>
@@ -123,7 +129,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                                 <div className="flex-1 min-w-0">
                                     <h3
                                         style={{ color: "var(--text-heading-color,#111827)" }}
-                                        className="text-lg font-bold mb-2 line-clamp-2"
+                                        className={`${SLIDE_SUBTITLE} mb-2`}
                                     >
                                         {bullet.title}
                                     </h3>

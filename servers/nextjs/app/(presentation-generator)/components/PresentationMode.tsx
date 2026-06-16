@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slide } from "../types/slide";
 import { useGroupLayouts } from "../hooks/useGroupLayouts";
+import AddQuestionsButton from "../presentation/components/AddQuestionsButton";
+import { isQuizSlide } from "../presentation/hooks/useGenerateQuestions";
 
 
 interface PresentationModeProps {
@@ -20,6 +22,9 @@ interface PresentationModeProps {
   onFullscreenToggle: () => void;
   onExit: () => void;
   onSlideChange: (slideNumber: number) => void;
+  presentationId?: string;
+  isStreaming?: boolean;
+  onQuestionsAdded?: (quizSlideIndex: number) => void;
 }
 
 const PresentationMode: React.FC<PresentationModeProps> = ({
@@ -31,9 +36,16 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   onFullscreenToggle,
   onExit,
   onSlideChange,
+  presentationId,
+  isStreaming = false,
+  onQuestionsAdded,
 
 }) => {
   const { renderSlideContent } = useGroupLayouts();
+  const isLastSlide = currentSlide === slides.length - 1;
+  const lastSlideIsQuiz = isQuizSlide(slides[slides.length - 1]);
+  const showQuestionsCta =
+    isLastSlide && !lastSlideIsQuiz && Boolean(presentationId);
   // Modify the handleKeyPress to prevent default behavior
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
@@ -154,34 +166,49 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
             </Button>
           </div>
 
-          <div className="presentation-controls absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSlideChange(currentSlide - 1);
-              }}
-              disabled={currentSlide === 0}
-              className="text-white hover:bg-white/20"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <span className="text-white">
-              {currentSlide + 1} / {slides.length}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSlideChange(currentSlide + 1);
-              }}
-              disabled={currentSlide === slides.length - 1}
-              className="text-white hover:bg-white/20"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Button>
+          <div className="presentation-controls absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-50">
+            {showQuestionsCta && (
+              <div className="flex flex-col items-center gap-2 mb-1">
+                <p className="text-white/90 text-sm text-center max-w-xs">
+                  ¿Evaluar lo aprendido? Genera 5 preguntas de opción múltiple.
+                </p>
+                <AddQuestionsButton
+                  presentation_id={presentationId!}
+                  disabled={isStreaming}
+                  variant="present-overlay"
+                  onQuestionsAdded={onQuestionsAdded}
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSlideChange(currentSlide - 1);
+                }}
+                disabled={currentSlide === 0}
+                className="text-white hover:bg-white/20"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <span className="text-white">
+                {currentSlide + 1} / {slides.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSlideChange(currentSlide + 1);
+                }}
+                disabled={currentSlide === slides.length - 1}
+                className="text-white hover:bg-white/20"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </>
       )}

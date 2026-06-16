@@ -2,6 +2,12 @@ import React from 'react'
 import * as z from "zod";
 import { IconSchema } from '@/presentation-templates/defaultSchemes';
 import { RemoteSvgIcon } from '@/app/hooks/useRemoteSvgIcon';
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+    SLIDE_BODY,
+    SLIDE_SUBTITLE,
+} from '@/presentation-templates/slideLayoutUtils';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer } from "recharts";
 
@@ -29,7 +35,7 @@ const chartWithBulletsSlideSchema = z.object({
     title: z.string().min(3).max(40).default('Market Size').meta({
         description: "Main title of the slide",
     }),
-    description: z.string().min(10).max(150).default('Businesses face challenges with outdated technology and rising costs, limiting efficiency and growth in competitive markets.').meta({
+    description: z.string().min(10).max(180).default('Businesses face challenges with outdated technology and rising costs, limiting efficiency and growth in competitive markets.').meta({
         description: "Description text below the title",
     }),
     chartData: z.union([barPieLineAreaChartDataSchema, scatterChartDataSchema]).default({
@@ -56,7 +62,7 @@ const chartWithBulletsSlideSchema = z.object({
         title: z.string().min(2).max(80).meta({
             description: "Bullet point title",
         }),
-        description: z.string().min(10).max(150).meta({
+        description: z.string().min(10).max(130).meta({
             description: "Bullet point description",
         }),
         icon: IconSchema,
@@ -126,7 +132,7 @@ const ChartWithBulletsSlideLayout: React.FC<ChartWithBulletsSlideLayoutProps> = 
     const yAxis = chartType === 'scatter' ? 'y' : 'value';
     const showLegend = slideData?.showLegend || false;
     const showTooltip = slideData?.showTooltip || true;
-    const bulletPoints = slideData?.bulletPoints || []
+    const bulletPoints = (slideData?.bulletPoints || []).slice(0, 3)
 
     const renderChart = () => {
         const renderPieLabel = (props: any) => {
@@ -238,7 +244,7 @@ const ChartWithBulletsSlideLayout: React.FC<ChartWithBulletsSlideLayoutProps> = 
             />
 
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
                     background:"var(--card-background-color,#ffffff)"
@@ -255,55 +261,48 @@ const ChartWithBulletsSlideLayout: React.FC<ChartWithBulletsSlideLayoutProps> = 
                     </div>
                 )}
                 {/* Main Content */}
-                <div className="flex h-full px-8 sm:px-12 lg:px-20 pt-8 pb-8">
-                    {/* Left Section - Title, Description, Chart */}
-                    <div className="flex-1 flex flex-col pr-8">
-                        {/* Title */}
-                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
+                <div className="flex h-full px-8 sm:px-12 lg:px-20 pt-10 pb-6 min-h-0">
+                    <div className="flex-1 flex flex-col pr-6 min-h-0 min-w-0">
+                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className={`${SLIDE_TITLE} mb-3`}>
                             {slideData?.title || 'Market Size'}
                         </h1>
 
-                        {/* Description */}
-                        <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-base text-gray-700 leading-relaxed mb-8">
+                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-2 mb-4`}>
                             {slideData?.description || 'Businesses face challenges with outdated technology and rising costs, limiting efficiency and growth in competitive markets.'}
                         </p>
 
-                        {/* Chart Container */}
-                        <div  className="flex-1 rounded-lg shadow-sm border border-gray-100 p-4" style={{ background: 'var(--primary-accent-color,#F5F8FE)' }}>
+                        <div className="flex-1 min-h-0 max-h-[320px] rounded-lg shadow-sm border border-gray-100 p-3" style={{ background: 'var(--primary-accent-color,#F5F8FE)' }}>
                             <ChartContainer config={chartConfig} className="h-full w-full">
                                 {renderChart()}
                             </ChartContainer>
                         </div>
                     </div>
 
-                    {/* Right Section - Bullet Point Boxes */}
-                    <div className="flex-shrink-0 w-80 flex flex-col justify-center space-y-4">
+                    <div className="flex-shrink-0 w-72 flex flex-col justify-center gap-3">
                         {bulletPoints.map((bullet, index) => (
                             <div
                                 key={index}
-                                className="rounded-2xl p-6 text-white"
+                                className="rounded-xl p-4 text-white"
                                 style={{
                                     backgroundColor: 'var(--primary-accent-color,#9333ea)'
                                 }}
                             >
-                                {/* Icon and Title */}
-                                <div className="flex items-center space-x-3 mb-3">
-                                    <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
                                         <RemoteSvgIcon
                                             url={bullet.icon.__icon_url__}
                                             strokeColor={"currentColor"}
-                                            className="w-5 h-5"
+                                            className="w-4 h-4"
                                             color="var(--text-heading-color,#ffffff)"
                                             title={bullet.icon.__icon_query__}
                                         />
                                     </div>
-                                    <h3 style={{color:"var(--text-heading-color,#ffffff)"}} className="text-lg font-semibold">
+                                    <h3 style={{color:"var(--text-heading-color,#ffffff)"}} className={`${SLIDE_SUBTITLE} text-sm`}>
                                         {bullet.title}
                                     </h3>
                                 </div>
 
-                                {/* Description */}
-                                <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-sm leading-relaxed opacity-90">
+                                <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs leading-relaxed line-clamp-3 opacity-90">
                                     {bullet.description}
                                 </p>
                             </div>

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { PresentationGenerationApi } from '../../services/api/presentation-generation';
@@ -8,6 +8,22 @@ import { addToHistory } from '@/store/slices/undoRedoSlice';
 interface UseAutoSaveOptions {
     debounceMs?: number;
     enabled?: boolean;
+}
+
+const pendingSaveTimeoutRef: { current: ReturnType<typeof setTimeout> | null } = {
+    current: null,
+};
+let skipAutoSaveFlag = false;
+
+export function cancelPendingAutoSave() {
+    if (pendingSaveTimeoutRef.current) {
+        clearTimeout(pendingSaveTimeoutRef.current);
+        pendingSaveTimeoutRef.current = null;
+    }
+}
+
+export function setSkipAutoSave(skip: boolean) {
+    skipAutoSaveFlag = skip;
 }
 
 export const useAutoSave = ({
@@ -20,25 +36,18 @@ export const useAutoSave = ({
         (state: RootState) => state.presentationGeneration
     );
 
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSavedDataRef = useRef<string>('');
     const [isSaving, setIsSaving] = useState<boolean>(false);
  
 
-    // Debounced save function
-    const debouncedSave = useCallback(async (data: any) => {
-        // Clear existing timeout
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
+    const debouncedSave = useCallback(async (data: unknown) => {
+        cancelPendingAutoSave();
 
-        // Set new timeout
-        saveTimeoutRef.current = setTimeout(async () => {
-            if (!data || isSaving) return;
+        pendingSaveTimeoutRef.current = setTimeout(async () => {
+            if (!data || isSaving || skipAutoSaveFlag) return;
 
             const currentDataString = JSON.stringify(data);
 
-            // Skip if data hasn't changed since last save
             if (currentDataString === lastSavedDataRef.current) {
                 return;
             }
@@ -47,10 +56,8 @@ export const useAutoSave = ({
                 setIsSaving(true);
                 console.log('🔄 Auto-saving presentation data...');
 
-                // Call the API to update presentation content
                 await PresentationGenerationApi.updatePresentationContent(data);
 
-                // Update last saved data reference
                 lastSavedDataRef.current = currentDataString;
 
                 console.log('✅ Auto-save successful');
@@ -64,26 +71,22 @@ export const useAutoSave = ({
         }, debounceMs);
     }, [debounceMs, isSaving]);
 
-    // Effect to trigger auto-save when presentation data changes
     useEffect(() => {
-        if (!enabled || !presentationData || isStreaming || isLoading || isLayoutLoading ) return;
+        if (!enabled || !presentationData || isStreaming || isLoading || isLayoutLoading || skipAutoSaveFlag) return;
         
         dispatch(addToHistory({
             slides: presentationData.slides,
             actionType: "AUTO_SAVE"
         }));
-        // Trigger debounced save
         debouncedSave(presentationData);
        
-        // Cleanup timeout on unmount
         return () => {
-            if (saveTimeoutRef.current) {
-                clearTimeout(saveTimeoutRef.current);
-            }
+            cancelPendingAutoSave();
         };
-    }, [presentationData, enabled, debouncedSave,isLoading, isStreaming, isLayoutLoading]);
+    }, [presentationData, enabled, debouncedSave, isLoading, isStreaming, isLayoutLoading, dispatch]);
     
     return {
         isSaving,
+        cancelPendingAutoSave,
     };
-}; 
+};

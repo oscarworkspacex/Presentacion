@@ -319,7 +319,7 @@ async def create_presentation_from_theme(
             n_slides=n_slides,
             content="Presentación creada desde tema guardado",
             tone=Tone.PROFESSIONAL,
-            verbosity=Verbosity.CONCISE,
+            verbosity=Verbosity.STANDARD,
             include_title_slide=True,
             include_table_of_contents=False,
             web_search=False,

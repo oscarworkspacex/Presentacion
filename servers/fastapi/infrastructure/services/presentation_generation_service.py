@@ -372,6 +372,7 @@ class PresentationGenerationService:
                     request.tone.value,
                     request.verbosity.value,
                     request.instructions,
+                    request.content,
                 )
                 for i in range(start, end)
             ]

@@ -23,6 +23,8 @@ import LoadingState from "./LoadingState";
 import { useLayout } from "../../context/LayoutContext";
 import { useFontLoader } from "../../hooks/useFontLoader";
 import { usePresentationUndoRedo } from "../hooks/PresentationUndoRedo";
+import GenerateQuestionsEndCard from "./GenerateQuestionsEndCard";
+import { isQuizSlide } from "../hooks/useGenerateQuestions";
 const PresentationPage: React.FC<PresentationPageProps> = ({
   presentation_id,
 }) => {
@@ -81,6 +83,20 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     handleSlideChange(newSlide, presentationData);
   };
 
+  const handleQuestionsAdded = (quizSlideIndex: number) => {
+    if (isPresentMode) {
+      onSlideChange(quizSlideIndex);
+    } else {
+      handleSlideClick(quizSlideIndex);
+    }
+  };
+
+  const lastSlideIsQuiz =
+    presentationData?.slides?.length &&
+    isQuizSlide(
+      presentationData.slides[presentationData.slides.length - 1]
+    );
+
 
   useEffect(() => {
     if(!loading && !isStreaming && presentationData?.slides && presentationData?.slides.length > 0){  
@@ -100,6 +116,9 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
         onFullscreenToggle={toggleFullscreen}
         onExit={handlePresentExit}
         onSlideChange={onSlideChange}
+        presentationId={presentation_id}
+        isStreaming={isStreaming}
+        onQuestionsAdded={handleQuestionsAdded}
       />
     );
   }
@@ -178,6 +197,13 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
                       presentationId={presentation_id}
                     />
                   ))}
+                {!lastSlideIsQuiz && (
+                  <GenerateQuestionsEndCard
+                    presentationId={presentation_id}
+                    disabled={isStreaming}
+                    onQuestionsAdded={handleQuestionsAdded}
+                  />
+                )}
               </>
             )}
           </div>

@@ -91,6 +91,8 @@ services:
     volumes:
       - .:/app
       - ./app_data:/app_data
+      - nextjs_next_build:/app/servers/nextjs/.next-build
+      - nextjs_node_modules:/app/servers/nextjs/node_modules
     environment:
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
@@ -162,3 +164,7 @@ services:
       - AUTH_USERNAME=${AUTH_USERNAME}
       - AUTH_PASSWORD=${AUTH_PASSWORD}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-VszuVR9A7f60EkUDmfr3OeQa6gX9uUkiKWtQthiyg_A}
+
+volumes:
+  nextjs_next_build:
+  nextjs_node_modules:

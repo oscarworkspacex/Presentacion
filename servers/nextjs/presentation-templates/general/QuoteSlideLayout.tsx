@@ -1,6 +1,7 @@
 import React from 'react'
 import * as z from "zod";
 import { ImageSchema } from '@/presentation-templates/defaultSchemes';
+import { SLIDE_CONTAINER, SLIDE_TITLE } from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'quote-slide'
 export const layoutName = 'Quote'
@@ -42,7 +43,7 @@ const QuoteSlideLayout: React.FC<QuoteSlideLayoutProps> = ({ data: slideData }) 
             />
 
             <div
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
                     background:"var(--card-background-color,#ffffff)"
@@ -78,24 +79,20 @@ const QuoteSlideLayout: React.FC<QuoteSlideLayoutProps> = ({ data: slideData }) 
                 <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
 
                 {/* Main Content */}
-                <div className="relative z-10 px-8 sm:px-12 lg:px-20 pt-14 py-12 flex-1 flex flex-col justify-center h-full">
-                    <div className="text-center space-y-8 max-w-4xl mx-auto">
-
-                        {/* Heading */}
-                        <div className="space-y-4">
-                            <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
+                <div className="relative z-10 px-8 sm:px-12 lg:px-20 pt-12 py-8 flex-1 flex flex-col justify-center h-full">
+                    <div className="text-center space-y-6 max-w-3xl mx-auto">
+                        <div className="space-y-3">
+                            <h1 style={{ color: "var(--text-heading-color,#ffffff)" }} className={`${SLIDE_TITLE} text-white`}>
                                 {slideData?.heading || 'Words of Wisdom'}
                             </h1>
-                            {/* Purple accent line */}
-                            <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-20 h-1 bg-purple-400 mx-auto"></div>
+                            <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-16 h-1 mx-auto"></div>
                         </div>
 
-                        {/* Quote Section */}
-                        <div className="space-y-6">
-                            {/* Quote Icon */}
+                        <div className="space-y-4">
                             <div className="flex justify-center">
                                 <svg
-                                    className="w-12 h-12 text-purple-300 opacity-80" style={{color:"var(--primary-accent-color,#9333ea)"}}
+                                    className="w-10 h-10 opacity-80"
+                                    style={{color:"var(--primary-accent-color,#9333ea)"}}
                                     fill="currentColor"
                                     viewBox="0 0 24 24"
                                 >
@@ -103,18 +100,16 @@ const QuoteSlideLayout: React.FC<QuoteSlideLayoutProps> = ({ data: slideData }) 
                                 </svg>
                             </div>
 
-                            {/* Quote Text */}
-                            <blockquote style={{color:"var(--text-body-color,#ffffff)"}} className="text-xl sm:text-2xl lg:text-3xl font-medium text-white leading-relaxed italic">
+                            <blockquote style={{color:"var(--text-body-color,#ffffff)"}} className="text-lg sm:text-xl lg:text-2xl font-medium text-white leading-relaxed italic line-clamp-4">
                                 "{slideData?.quote || 'Success is not final, failure is not fatal: it is the courage to continue that counts. The future belongs to those who believe in the beauty of their dreams.'}"
                             </blockquote>
 
-                            {/* Author */}
-                            <div className="flex justify-center items-center space-x-4">
-                                <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-16 h-px bg-purple-300"></div>
-                                <cite className="text-base sm:text-lg text-purple-200 font-semibold not-italic">
+                            <div className="flex justify-center items-center gap-3">
+                                <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-12 h-px"></div>
+                                <cite className="text-sm sm:text-base text-purple-200 font-semibold not-italic">
                                     {slideData?.author || 'Winston Churchill'}
                                 </cite>
-                                <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-16 h-px bg-purple-300"></div>
+                                <div style={{background:"var(--primary-accent-color,#9333ea)"}} className="w-12 h-px"></div>
                             </div>
                         </div>
                     </div>

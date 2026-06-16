@@ -8,6 +8,27 @@ import TiptapTextReplacer from "../components/TiptapTextReplacer";
 import { updateSlideContent } from "../../../store/slices/presentationGeneration";
 import { Loader2 } from "lucide-react";
 
+export function isQuizSlideLayout(slide: {
+  layout?: string;
+  layout_group?: string;
+}): boolean {
+  return (
+    slide.layout?.includes("questions-quiz-slide") ||
+    slide.layout_group === "questions"
+  );
+}
+
+function getLayoutKey(slide: {
+  id?: string;
+  layout?: string;
+  layout_group?: string;
+}): string {
+  if (isQuizSlideLayout(slide)) {
+    return `quiz-${slide.id ?? slide.layout}`;
+  }
+  return `layout-${slide.id ?? slide.layout}`;
+}
+
 export const useGroupLayouts = () => {
   const dispatch = useDispatch();
   const { getLayoutByIdAndGroup, getLayoutsByGroup, getLayout, loading } =
@@ -29,10 +50,8 @@ export const useGroupLayouts = () => {
     };
   }, [getLayoutsByGroup]);
 
-  // Render slide content with group validation, automatic Tiptap text editing, and editable images/icons
   const renderSlideContent = useMemo(() => {
     return (slide: any, isEditMode: boolean) => {
-     
       const Layout = getGroupLayout(slide.layout, slide.layout_group);
       if (loading) {
         return (
@@ -49,6 +68,14 @@ export const useGroupLayouts = () => {
               {slide.layout_group}&quot; group
             </p>
           </div>
+        );
+      }
+
+      if (isQuizSlideLayout(slide)) {
+        return (
+          <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
+            <Layout key={getLayoutKey(slide)} data={slide.content} />
+          </SlideErrorBoundary>
         );
       }
 
@@ -80,19 +107,20 @@ export const useGroupLayouts = () => {
               }}
             >
               <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
-                <Layout key={`layout-${slide.id}`} data={slide.content} />
+                <Layout key={getLayoutKey(slide)} data={slide.content} />
               </SlideErrorBoundary>
             </TiptapTextReplacer>
           </EditableLayoutWrapper>
         );
       }
+
       return (
         <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
-          <Layout key={`layout-${slide.id}`} data={slide.content} />
+          <Layout key={getLayoutKey(slide)} data={slide.content} />
         </SlideErrorBoundary>
       );
     };
-  }, [getGroupLayout, dispatch]);
+  }, [getGroupLayout, dispatch, loading]);
 
   return {
     getGroupLayout,

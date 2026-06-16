@@ -1,6 +1,12 @@
 import React from 'react'
 import * as z from "zod";
 import { ImageSchema } from '@/presentation-templates/defaultSchemes';
+import {
+    SLIDE_CONTAINER,
+    SLIDE_TITLE,
+    SLIDE_BODY,
+    SLIDE_IMAGE_SIDE,
+} from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'metrics-with-image-slide'
 export const layoutName = 'Metrics with Image'
@@ -10,7 +16,7 @@ const metricsWithImageSlideSchema = z.object({
     title: z.string().min(3).max(40).default('Competitive Advantage').meta({   
         description: "Main title of the slide",
     }),
-    description: z.string().min(10).max(150).default('Ginyard International Co. stands out by offering custom digital solutions tailored to client needs, alongside long-term support to ensure lasting relationships and continuous adaptation.').meta({
+    description: z.string().min(10).max(180).default('Ginyard International Co. stands out by offering custom digital solutions tailored to client needs, alongside long-term support to ensure lasting relationships and continuous adaptation.').meta({
         description: "Description text below the title",
     }),
     image: ImageSchema.default({
@@ -20,7 +26,7 @@ const metricsWithImageSlideSchema = z.object({
         description: "Supporting image for the slide",
     }),
     metrics: z.array(z.object({
-        label: z.string().min(2).max(100).meta({
+        label: z.string().min(2).max(50).meta({
             description: "Metric label/title"
         }),
         value: z.string().min(1).max(20).meta({
@@ -50,7 +56,9 @@ interface MetricsWithImageSlideLayoutProps {
 }
 
 const MetricsWithImageSlideLayout: React.FC<MetricsWithImageSlideLayoutProps> = ({ data: slideData }) => {
-    const metrics = slideData?.metrics || []
+    const metrics = (slideData?.metrics || []).slice(0, 3)
+    const metricsGridCols =
+        metrics.length === 3 ? 'grid-cols-3' : metrics.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
 
     return (
         <>
@@ -60,14 +68,14 @@ const MetricsWithImageSlideLayout: React.FC<MetricsWithImageSlideLayoutProps> = 
             />
             
             <div 
-                className="w-full rounded-sm max-w-[1280px] shadow-lg max-h-[720px] aspect-video bg-white relative z-20 mx-auto overflow-hidden"
+                className={`${SLIDE_CONTAINER} bg-white`}
                 style={{
                     fontFamily: 'var(--heading-font-family,Inter)',
                     background:"var(--card-background-color,#ffffff)"
                 }}
             >
                 {(slideData as any)?.__companyName__ && (
-                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4">
+                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4 z-10">
                         <div className="flex items-center gap-4">
                             <span className="text-sm sm:text-base font-semibold" style={{ color: 'var(--text-heading-color, #111827)' }}>
                                 {(slideData as any)?.__companyName__ || 'Company Name'}
@@ -76,53 +84,47 @@ const MetricsWithImageSlideLayout: React.FC<MetricsWithImageSlideLayoutProps> = 
                         </div>
                     </div>
                 )}
-                {/* Decorative Wave Patterns */}
-                <div className="absolute bottom-0 left-0 w-48 h-48 opacity-10 overflow-hidden">
+
+                <div className="absolute bottom-0 left-0 w-48 h-48 opacity-10 overflow-hidden pointer-events-none">
                     <svg className="w-full h-full" viewBox="0 0 200 200" fill="none">
                         <path d="M0 100C50 75 100 125 150 100C175 87.5 200 100 200 100V200H0V100Z" fill="#8b5cf6" opacity="0.4"/>
                         <path d="M0 150C75 175 125 125 200 150V175C150 162.5 100 175 50 162.5L0 150Z" fill="#8b5cf6" opacity="0.3"/>
                     </svg>
                 </div>
                 
-                <div className="absolute top-0 right-0 w-64 h-64 opacity-10 overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 opacity-10 overflow-hidden pointer-events-none">
                     <svg className="w-full h-full" viewBox="0 0 200 200" fill="none">
                         <path d="M100 0C150 50 200 0 200 50C200 100 150 150 100 150C50 150 0 100 0 50C0 0 50 50 100 0Z" fill="#8b5cf6" opacity="0.2"/>
                     </svg>
                 </div>
 
-                {/* Main Content */}
-                <div className="relative z-10 flex h-full px-8 sm:px-12 lg:px-20 pt-12 pb-8">
-                    {/* Left Section - Image */}
-                    <div className="flex-1 flex items-center justify-center pr-8">
-                        <div className="w-full max-w-lg h-96 rounded-2xl overflow-hidden shadow-lg">
+                <div className="relative z-10 flex h-full px-8 sm:px-12 lg:px-20 pt-10 pb-6 items-center gap-8">
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-lg">
                             <img
                                 src={slideData?.image?.__image_url__ || ''}
                                 alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
-                                className="w-full h-full object-cover"
+                                className={SLIDE_IMAGE_SIDE}
                             />
                         </div>
                     </div>
 
-                    {/* Right Section - Content and Metrics */}
-                    <div className="flex-1 flex flex-col justify-center pl-8 space-y-6">
-                        {/* Title */}
-                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                    <div className="flex-1 flex flex-col justify-center min-w-0 space-y-4">
+                        <h1 style={{ color: "var(--text-heading-color,#111827)" }} className={SLIDE_TITLE}>
                             {slideData?.title || 'Competitive Advantage'}
                         </h1>
 
-                        {/* Description */}
-                        <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-base sm:text-lg text-gray-700 leading-relaxed">
+                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-3`}>
                             {slideData?.description || 'Ginyard International Co. stands out by offering custom digital solutions tailored to client needs, alongside long-term support to ensure lasting relationships and continuous adaptation.'}
                         </p>
 
-                        {/* Metrics Grid */}
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className={`grid ${metricsGridCols} gap-4`}>
                             {metrics.map((metric, index) => (
-                                <div key={index} className="text-center space-y-2">
-                                    <div style={{color:"var(--text-body-color,#4b5563)"}} className="text-sm text-gray-600 font-medium">
+                                <div key={index} className="text-center space-y-1">
+                                    <div style={{color:"var(--text-body-color,#4b5563)"}} className="text-xs font-medium line-clamp-2">
                                         {metric.label}
                                     </div>
-                                    <div style={{color:"var(--text-heading-color,#9333ea)"}} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-purple-600">
+                                    <div style={{color:"var(--text-heading-color,#9333ea)"}} className="text-2xl lg:text-3xl font-bold">
                                         {metric.value}
                                     </div>
                                 </div>
@@ -135,4 +137,4 @@ const MetricsWithImageSlideLayout: React.FC<MetricsWithImageSlideLayoutProps> = 
     )
 }
 
-export default MetricsWithImageSlideLayout 
+export default MetricsWithImageSlideLayout
