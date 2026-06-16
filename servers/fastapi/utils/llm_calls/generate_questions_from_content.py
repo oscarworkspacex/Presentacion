@@ -1,13 +1,19 @@
 """
 Generación de preguntas de evaluación basadas en el contenido real de una presentación.
-Las preguntas son generadas 100% por IA usando el contenido específico de los slides.
+
+Las preguntas son generadas por IA usando EXCLUSIVAMENTE el contenido de los slides.
+Reglas clave:
+- Nivel profesional (comprensión / aplicación), no trivia obvia.
+- Toda la información (pregunta, opciones, respuesta correcta y explicación) debe
+  provenir 100% del contenido de las diapositivas. Prohibido conocimiento externo.
+- Se valida "grounding": se descartan preguntas cuya respuesta correcta no esté
+  respaldada por el texto de los slides.
 """
 
-import json
 import re
 import logging
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from typing import List, Dict, Any, Optional, Set
+from pydantic import BaseModel, Field
 
 from models.llm_message import LLMSystemMessage, LLMUserMessage
 from services.llm_client import LLMClient
@@ -17,22 +23,18 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Modelos de validación
+# Modelos de validación / esquema de respuesta del LLM
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GeneratedQuestion(BaseModel):
-    question: str
-    options: List[str]
-    correct_answer: int
-    explanation: str
+    question: str = Field(description="Enunciado de la pregunta")
+    options: List[str] = Field(description="Exactamente 4 opciones de respuesta")
+    correct_answer: int = Field(description="Índice (0-3) de la opción correcta")
+    explanation: str = Field(description="Explicación citando lo que dice el slide")
 
 
 class QuestionsResponse(BaseModel):
     questions: List[GeneratedQuestion]
-
-
-class SingleQuestionResponse(BaseModel):
-    question: GeneratedQuestion
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,11 +87,8 @@ def extract_clean_content_from_slides(slides_content: List[Dict[str, Any]]) -> s
     """
     Extrae todo el texto útil de los slides de una presentación.
 
-    Args:
-        slides_content: Lista de dicts de contenido de slides
-
     Returns:
-        Texto limpio concatenado listo para enviar al LLM
+        Texto limpio concatenado y numerado por slide, listo para el LLM.
     """
     chunks = extract_slide_chunks(slides_content)
     if not chunks:
@@ -123,11 +122,48 @@ def extract_slide_chunks(slides_content: List[Dict[str, Any]]) -> List[str]:
     return chunks
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Normalización y similitud (para deduplicar y validar grounding)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Palabras vacías que no aportan a la validación de "grounding"
+_STOPWORDS: Set[str] = {
+    # Español
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al",
+    "a", "ante", "con", "contra", "desde", "en", "entre", "hacia", "hasta",
+    "para", "por", "segun", "sin", "sobre", "tras", "y", "e", "o", "u", "que",
+    "como", "cual", "cuando", "donde", "es", "son", "ser", "esta", "este",
+    "estos", "estas", "esto", "su", "sus", "se", "lo", "le", "les", "mas",
+    "muy", "tambien", "pero", "porque", "si", "no", "ni", "ya", "cada", "todo",
+    "todos", "toda", "todas", "otro", "otra", "tiene", "tienen", "puede",
+    "pueden", "debe", "deben", "ningun", "ninguna", "siguiente", "siguientes",
+    # Inglés
+    "the", "a", "an", "of", "to", "in", "on", "for", "and", "or", "but",
+    "with", "without", "from", "by", "as", "is", "are", "be", "this", "that",
+    "these", "those", "it", "its", "they", "their", "which", "what", "when",
+    "where", "how", "can", "could", "should", "must", "also", "more", "very",
+    "each", "all", "any", "some", "other", "has", "have", "does",
+}
+
+
 def _normalize_for_comparison(text: str) -> str:
     normalized = text.lower().strip()
     normalized = re.sub(r"[^\w\s]", " ", normalized, flags=re.UNICODE)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized
+
+
+def _significant_tokens(text: str) -> Set[str]:
+    """Devuelve los tokens significativos (sin stopwords ni palabras cortas)."""
+    tokens = _normalize_for_comparison(text).split()
+    result: Set[str] = set()
+    for token in tokens:
+        if token in _STOPWORDS:
+            continue
+        # Conservar números y palabras de al menos 3 caracteres
+        if token.isdigit() or len(token) >= 3:
+            result.add(token)
+    return result
 
 
 def _question_similarity(a: str, b: str) -> float:
@@ -171,87 +207,35 @@ def deduplicate_questions(
     return unique
 
 
-def _format_question(q: GeneratedQuestion, question_id: int) -> Dict[str, Any]:
-    correct = max(0, min(3, q.correct_answer))
-    options = q.options[:4]
-    while len(options) < 4:
-        options.append(f"Opción {len(options) + 1}")
-    
-    # Crear un nuevo dict completamente independiente para evitar referencias compartidas
+# ─────────────────────────────────────────────────────────────────────────────
+# Formateo y validación de preguntas
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _format_question(q: GeneratedQuestion, question_id: int) -> Optional[Dict[str, Any]]:
+    """Normaliza una pregunta generada al formato del frontend."""
+    options = [str(opt).strip() for opt in q.options if str(opt).strip()]
+    # Eliminar opciones duplicadas conservando el orden
+    options = list(dict.fromkeys(options))
+
+    if len(options) != 4:
+        return None
+
+    correct = q.correct_answer
+    if not isinstance(correct, int) or correct < 0 or correct > 3:
+        return None
+
     return {
         "id": int(question_id),
         "question": str(q.question.strip()),
-        "options": [str(opt) for opt in options],
+        "options": options,
         "correctAnswer": int(correct),
-        "explanation": str(q.explanation),
+        "explanation": str(q.explanation).strip(),
     }
-
-
-def _extract_facts_from_slide(chunk: str) -> List[Dict[str, str]]:
-    """Extrae hechos concretos del texto de un slide para guiar preguntas coherentes."""
-    facts: List[Dict[str, str]] = []
-    sentences = [s.strip() for s in re.split(r'[.!?\n]\s+', chunk) if len(s.strip()) >= 12]
-
-    formations = re.findall(r'\b\d-\d-\d\b', chunk)
-    for formation in dict.fromkeys(formations):
-        facts.append({"type": "formation", "value": formation, "context": chunk[:200]})
-
-    duration_matches = re.finditer(
-        r'(\d+(?:[.,]\d+)?)\s*(minutos|minuto|min)\b',
-        chunk,
-        re.IGNORECASE,
-    )
-    for match in duration_matches:
-        facts.append({
-            "type": "duration",
-            "value": f"{match.group(1)} minutos",
-            "context": chunk[:200],
-        })
-
-    player_matches = re.finditer(
-        r'(\d+)\s*(jugadores|jugador)\b',
-        chunk,
-        re.IGNORECASE,
-    )
-    for match in player_matches:
-        facts.append({
-            "type": "players",
-            "value": f"{match.group(1)} jugadores",
-            "context": chunk[:200],
-        })
-
-    for sentence in sentences[:4]:
-        if len(sentence) >= 20:
-            facts.append({"type": "statement", "value": sentence[:120], "context": chunk[:200]})
-
-    # Números genéricos al final, evitando el dígito de nombres como "Fútbol 7"
-    number_matches = re.finditer(r'\b(\d+(?:[.,]\d+)?)\b', chunk)
-    for match in number_matches:
-        start = match.start()
-        prefix = chunk[max(0, start - 12):start]
-        if re.search(r'[A-Za-zÁÉÍÓÚáéíóú]\s*$', prefix):
-            continue
-        value = match.group(1)
-        if any(f["type"] in {"duration", "players", "formation"} and value in f["value"] for f in facts):
-            continue
-        facts.append({"type": "number", "value": value, "context": chunk[:200]})
-
-    priority = {"duration": 0, "formation": 1, "players": 2, "statement": 3, "number": 4}
-    unique_facts: List[Dict[str, str]] = []
-    seen = set()
-    for fact in sorted(facts, key=lambda item: priority.get(item["type"], 99)):
-        key = (fact["type"], fact["value"])
-        if key not in seen:
-            seen.add(key)
-            unique_facts.append(fact)
-
-    return unique_facts[:6]
 
 
 def _basic_validation(question: str, options: List[str]) -> bool:
     """Validación mínima: estructura básica correcta."""
-    # Solo verificar que no esté vacío y tenga 4 opciones diferentes
-    if not question or len(question.strip()) < 5:
+    if not question or len(question.strip()) < 8:
         return False
     if len(options) != 4:
         return False
@@ -260,243 +244,180 @@ def _basic_validation(question: str, options: List[str]) -> bool:
     return True
 
 
+def _is_grounded(
+    question: Dict[str, Any],
+    content_tokens: Set[str],
+    min_ratio: float = 0.5,
+) -> bool:
+    """
+    Verifica que la respuesta correcta esté respaldada por el contenido de los slides.
+
+    Una pregunta se considera "grounded" si una proporción suficiente de los
+    tokens significativos de la opción correcta aparece en el contenido de los
+    slides. Esto evita preguntas/respuestas inventadas con datos externos.
+    """
+    if not content_tokens:
+        return False
+
+    options = question.get("options", [])
+    correct_index = question.get("correctAnswer", 0)
+    if correct_index < 0 or correct_index >= len(options):
+        return False
+
+    correct_text = options[correct_index]
+    correct_tokens = _significant_tokens(correct_text)
+
+    # Si la respuesta correcta no tiene tokens significativos (p.ej. "Sí"/"No"),
+    # nos apoyamos en que la pregunta esté relacionada con el contenido.
+    if not correct_tokens:
+        question_tokens = _significant_tokens(question.get("question", ""))
+        if not question_tokens:
+            return False
+        overlap = len(question_tokens & content_tokens) / len(question_tokens)
+        return overlap >= min_ratio
+
+    present = len(correct_tokens & content_tokens)
+    ratio = present / len(correct_tokens)
+    return ratio >= min_ratio
 
 
-def _facts_prompt_block(facts: List[Dict[str, str]], language: str) -> str:
-    if not facts:
-        return ""
+# ─────────────────────────────────────────────────────────────────────────────
+# Prompts
+# ─────────────────────────────────────────────────────────────────────────────
 
-    lines = []
-    for index, fact in enumerate(facts[:5], start=1):
-        lines.append(f"{index}. [{fact['type']}] {fact['value']}")
+def _build_system_prompt(language: str) -> str:
+    if language == "es":
+        return """Eres un diseñador experto de evaluaciones académicas y profesionales.
 
-    header = "HECHOS DETECTADOS EN ESTE SLIDE:" if language == "es" else "FACTS DETECTED IN THIS SLIDE:"
-    return f"\n{header}\n" + "\n".join(lines)
+Tu tarea: crear preguntas de opción múltiple de NIVEL PROFESIONAL para evaluar la
+comprensión de una presentación.
+
+REGLAS ABSOLUTAS (su incumplimiento invalida la respuesta):
+1. FUENTE ÚNICA: Toda la información (enunciado, las 4 opciones, la respuesta
+   correcta y la explicación) debe provenir EXCLUSIVAMENTE del contenido de los
+   slides que se te entregan. PROHIBIDO usar conocimiento externo o inventar datos.
+2. RESPUESTA VERIFICABLE: La opción correcta debe poder confirmarse leyendo el
+   contenido. La explicación debe indicar qué parte del contenido lo respalda.
+3. CALIDAD PROFESIONAL: Evita trivia obvia o preguntas de relleno. Evalúa
+   comprensión, relaciones causa-efecto, aplicación de conceptos y datos clave.
+4. DISTRACTORES PLAUSIBLES: Las 3 opciones incorrectas deben ser verosímiles y
+   del mismo tipo que la correcta, pero claramente incorrectas según el contenido.
+   No uses opciones como "Ninguna de las anteriores" ni texto de relleno.
+5. FORMATO: Exactamente 4 opciones por pregunta. `correct_answer` es el índice
+   (0 a 3) de la opción correcta. Varía la posición de la respuesta correcta.
+6. IDIOMA: Redacta TODO en español.
+7. SIN REPETIR: No repitas ni reformules la misma pregunta.
+
+Responde ÚNICAMENTE con el JSON solicitado."""
+
+    return """You are an expert designer of academic and professional assessments.
+
+Your task: create PROFESSIONAL-LEVEL multiple-choice questions to evaluate the
+understanding of a presentation.
+
+ABSOLUTE RULES (violations invalidate the answer):
+1. SINGLE SOURCE: All information (stem, the 4 options, the correct answer and the
+   explanation) must come EXCLUSIVELY from the provided slide content. You are
+   FORBIDDEN from using external knowledge or inventing data.
+2. VERIFIABLE ANSWER: The correct option must be confirmable by reading the
+   content. The explanation must state which part of the content supports it.
+3. PROFESSIONAL QUALITY: Avoid obvious trivia or filler questions. Assess
+   understanding, cause-effect relationships, application of concepts and key data.
+4. PLAUSIBLE DISTRACTORS: The 3 incorrect options must be believable and of the
+   same type as the correct one, but clearly wrong per the content. Do not use
+   options like "None of the above" or filler text.
+5. FORMAT: Exactly 4 options per question. `correct_answer` is the index (0 to 3)
+   of the correct option. Vary the position of the correct answer.
+6. LANGUAGE: Write EVERYTHING in English.
+7. NO REPEATS: Do not repeat or rephrase the same question.
+
+Respond ONLY with the requested JSON."""
 
 
-def _is_generic_question(question_text: str) -> bool:
-    """Validación mínima: rechaza solo preguntas extremadamente vagas."""
-    normalized = _normalize_for_comparison(question_text)
-    # Solo rechazar si la pregunta es completamente vacía o trivial
-    if len(normalized) < 10:
-        return True
-    return False
-
-
-async def _generate_single_question_for_slide(
-    client: LLMClient,
-    slide_index: int,
-    slide_chunk: str,
+def _build_user_prompt(
+    content: str,
+    num_questions: int,
     language: str,
-    existing_questions: List[str],
-) -> Optional[Dict[str, Any]]:
-    """Genera exactamente una pregunta coherente para un slide concreto."""
-    facts = _extract_facts_from_slide(slide_chunk)
-    facts_block = _facts_prompt_block(facts, language)
-
+    existing_questions: Optional[List[str]] = None,
+) -> str:
     existing_block = ""
     if existing_questions:
         joined = "\n".join(f"- {q}" for q in existing_questions)
-        existing_block = (
-            f"\n\nPREGUNTAS YA USADAS (NO repitas ni reformules ninguna de estas):\n{joined}"
-            if language == "es"
-            else f"\n\nALREADY USED QUESTIONS (do NOT repeat or rephrase any of these):\n{joined}"
-        )
+        if language == "es":
+            existing_block = (
+                f"\n\nPREGUNTAS YA GENERADAS (NO las repitas ni reformules):\n{joined}"
+            )
+        else:
+            existing_block = (
+                f"\n\nALREADY GENERATED QUESTIONS (do NOT repeat or rephrase):\n{joined}"
+            )
 
     if language == "es":
-        system_prompt = """Eres un generador de preguntas de evaluación.
+        return f"""CONTENIDO DE LA PRESENTACIÓN (única fuente permitida):
+\"\"\"
+{content[:9000]}
+\"\"\"
 
-INSTRUCCIÓN CRÍTICA: Debes responder SIEMPRE en formato JSON, NUNCA en texto plano.
-IDIOMA: Genera la pregunta en ESPAÑOL (mismo idioma del contenido).
+Genera exactamente {num_questions} preguntas de opción múltiple profesionales,
+basadas únicamente en el contenido anterior.{existing_block}"""
 
-PROCESO OBLIGATORIO (sigue estos pasos):
+    return f"""PRESENTATION CONTENT (only allowed source):
+\"\"\"
+{content[:9000]}
+\"\"\"
 
-PASO 1: Lee el contenido del slide y encuentra UN DATO CONCRETO.
-Ejemplos de datos concretos:
-- Un número específico: "7 jugadores", "25 minutos", "2 tiempos"
-- Una formación: "3-2-1", "4-4-2"  
-- Un nombre: "Copa América", "Mundial"
-- Una fecha: "1990", "cada 4 años"
-- Una regla: "el portero no puede salir"
-
-PASO 2: Pregunta ESPECÍFICA sobre ese dato (NO genérica).
-❌ MAL: "¿Cuál es una característica?"
-✅ BIEN: "¿Cuántos jugadores tiene cada equipo?"
-
-PASO 3: 4 opciones del MISMO TIPO.
-Si es número → todas opciones son números
-Si es formación → todas opciones son formaciones
-
-PASO 4: La correcta DEBE estar en el slide.
-
-RESPONDE SIEMPRE ASÍ (JSON):
-{"question":{"question":"¿Pregunta aquí?","options":["opción 1","opción 2","opción 3","opción 4"],"correct_answer":0,"explanation":"Explicación"}}"""
-        user_prompt = f"""CONTENIDO:
-{slide_chunk[:1800]}
-
-DATOS DETECTADOS:
-{facts_block}
-
-{existing_block}
-
-GENERA JSON CON 1 PREGUNTA ESPECÍFICA EN ESPAÑOL."""
-    else:
-        system_prompt = """You are an assessment question generator.
-
-CRITICAL INSTRUCTION: You must ALWAYS respond in JSON format, NEVER in plain text.
-LANGUAGE: Generate the question in ENGLISH (same language as content).
-
-MANDATORY PROCESS (follow these steps):
-
-STEP 1: Read slide content and find ONE CONCRETE FACT.
-Examples of concrete facts:
-- A specific number: "7 players", "25 minutes", "2 halves"
-- A formation: "3-2-1", "4-4-2"
-- A name: "Copa America", "World Cup"
-- A date: "1990", "every 4 years"
-- A rule: "goalkeeper cannot leave"
-
-STEP 2: SPECIFIC question about that fact (NOT generic).
-❌ BAD: "What is a characteristic?"
-✅ GOOD: "How many players per team?"
-
-STEP 3: 4 options of the SAME TYPE.
-If number → all options are numbers
-If formation → all options are formations
-
-STEP 4: Correct answer MUST be in the slide.
-
-ALWAYS RESPOND LIKE THIS (JSON):
-{"question":{"question":"Question here?","options":["option 1","option 2","option 3","option 4"],"correct_answer":0,"explanation":"Explanation"}}"""
-        user_prompt = f"""CONTENT:
-{slide_chunk[:1800]}
-
-DETECTED FACTS:
-{facts_block}
-
-{existing_block}
-
-GENERATE JSON WITH 1 SPECIFIC QUESTION IN ENGLISH."""
-
-    raw_response = await client.generate(
-        messages=[
-            LLMSystemMessage(content=system_prompt),
-            LLMUserMessage(content=user_prompt),
-        ],
-        model=get_model(),
-        max_tokens=700,
-    )
-
-    if not raw_response:
-        return None
-
-    parsed = _safe_parse_json(raw_response)
-    if not parsed:
-        return None
-
-    question_payload = parsed.get("question", parsed)
-    try:
-        generated = GeneratedQuestion(**question_payload)
-    except Exception:
-        return None
-
-    formatted = _format_question(generated, slide_index + 1)
-    question_text = formatted["question"]
-    
-    # Log de la pregunta generada para debugging
-    logger.info(f"Pregunta generada para slide {slide_index + 1}: {question_text[:100]}")
-
-    # Validación mínima: estructura básica
-    if not _basic_validation(question_text, formatted["options"]):
-        logger.warning(f"Pregunta rechazada por validación básica: {question_text[:80]}")
-        return None
-
-    # Evitar duplicados
-    for existing in existing_questions:
-        if _normalize_for_comparison(question_text) == _normalize_for_comparison(existing):
-            return None
-        if _question_similarity(question_text, existing) >= 0.55:
-            return None
-
-    return formatted
+Generate exactly {num_questions} professional multiple-choice questions, based
+only on the content above.{existing_block}"""
 
 
-async def _generate_questions_per_slide(
-    slide_chunks: List[str],
+# ─────────────────────────────────────────────────────────────────────────────
+# Generación principal con LLM (salida estructurada)
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def _request_questions(
+    client: LLMClient,
+    content: str,
     num_questions: int,
     language: str,
-) -> List[Dict[str, Any]]:
-    """Genera una pregunta independiente por cada slide."""
-    client = LLMClient()
-    questions: List[Dict[str, Any]] = []
-    existing_texts: List[str] = []
+    existing_questions: Optional[List[str]] = None,
+) -> List[GeneratedQuestion]:
+    """Pide preguntas al LLM usando salida estructurada y las valida vía Pydantic."""
+    messages = [
+        LLMSystemMessage(content=_build_system_prompt(language)),
+        LLMUserMessage(
+            content=_build_user_prompt(content, num_questions, language, existing_questions)
+        ),
+    ]
 
-    for index, chunk in enumerate(slide_chunks[:num_questions]):
-        generated = await _generate_single_question_for_slide(
-            client,
-            index,
-            chunk,
-            language,
-            existing_texts,
-        )
-        if generated:
-            questions.append(generated)
-            existing_texts.append(generated["question"])
-            continue
+    raw = await client.generate_structured(
+        model=get_model(),
+        messages=messages,
+        response_format=QuestionsResponse.model_json_schema(),
+        strict=True,
+        max_tokens=3000,
+    )
 
-        fallback = _build_fallback_question_for_slide(index, chunk, language)
-        if fallback and _validate_question_quality(fallback, chunk) and not any(
-            _question_similarity(fallback["question"], existing) >= 0.55
-            for existing in existing_texts
-        ):
-            fallback["id"] = len(questions) + 1
-            questions.append(fallback)
-            existing_texts.append(fallback["question"])
-
-    for index, question in enumerate(questions):
-        question["id"] = index + 1
-
-    return questions[:num_questions]
-
-
-def _build_slide_prompt_sections(slide_chunks: List[str]) -> str:
-    sections = []
-    for index, chunk in enumerate(slide_chunks):
-        sections.append(f"--- SLIDE {index + 1} ---\n{chunk[:900]}")
-    return "\n\n".join(sections)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Parseo seguro del JSON devuelto por el LLM
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _safe_parse_json(raw: str) -> Optional[Dict]:
-    """
-    Parsea JSON de la respuesta del LLM, manejando casos donde
-    el modelo envuelve la respuesta en bloques de código markdown.
-    """
     if not raw:
-        return None
-
-    # Eliminar bloques markdown si los hay
-    cleaned = re.sub(r"```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
-    cleaned = cleaned.replace("```", "").strip()
-
-    # Intentar encontrar el JSON dentro de la respuesta
-    match = re.search(r'\{.*\}', cleaned, re.DOTALL)
-    if match:
-        cleaned = match.group(0)
+        return []
 
     try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        logger.error(f"JSON parse failed. Raw (first 500 chars): {raw[:500]}")
-        return None
+        parsed = QuestionsResponse(**raw)
+    except Exception as exc:
+        logger.warning(f"No se pudo validar la respuesta del LLM: {exc}")
+        # Intento tolerante: tomar la lista de 'questions' si viene presente
+        questions_raw = raw.get("questions") if isinstance(raw, dict) else None
+        if not isinstance(questions_raw, list):
+            return []
+        parsed_questions: List[GeneratedQuestion] = []
+        for item in questions_raw:
+            try:
+                parsed_questions.append(GeneratedQuestion(**item))
+            except Exception:
+                continue
+        return parsed_questions
 
+    return parsed.questions
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Generación principal con LLM
-# ─────────────────────────────────────────────────────────────────────────────
 
 async def generate_questions_from_presentation_content(
     presentation_content: str,
@@ -505,74 +426,91 @@ async def generate_questions_from_presentation_content(
     outlines: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Genera preguntas de opción múltiple específicas al contenido real de la presentación.
-
-    Args:
-        presentation_content: Texto del contenido de la presentación
-        num_questions: Número de preguntas a generar
-        language: Idioma sugerido ('es' o 'en')
-        outlines: Lista de dicts con el contenido de cada slide (opcional)
+    Genera preguntas de opción múltiple profesionales basadas exclusivamente en el
+    contenido real de la presentación.
 
     Returns:
-        Lista de preguntas formateadas para el frontend
+        Lista de preguntas formateadas para el frontend.
     """
-    slide_chunks: List[str] = []
+    # Construir el contenido base y el conjunto de tokens para validar grounding
     if outlines:
-        slide_chunks = extract_slide_chunks(outlines)
         clean_content = extract_clean_content_from_slides(outlines)
         if len(clean_content.strip()) > 50:
             base_content = clean_content
             logger.info(
-                f"Using {len(outlines)} slide outlines ({len(base_content)} chars, {len(slide_chunks)} chunks)"
+                f"Using {len(outlines)} slide outlines ({len(base_content)} chars)"
             )
         else:
             base_content = presentation_content
             logger.info("Outlines yielded no useful text, falling back to presentation_content")
     else:
         base_content = presentation_content
-        slide_chunks = [
-            chunk.strip()
-            for chunk in re.split(r'\[Slide \d+\]', base_content)
-            if len(chunk.strip()) >= 20
-        ]
 
-    if len(base_content.strip()) < 30 and not slide_chunks:
+    if len(base_content.strip()) < 30:
         logger.warning("Content too short to generate meaningful questions")
         raise ValueError("Insufficient content for question generation")
 
-    if not slide_chunks:
-        slide_chunks = [base_content[:1200]]
+    content_tokens = _significant_tokens(base_content)
 
-    # Estrategia: 1 pregunta por slide para máxima diversidad
-    per_slide_questions = await _generate_questions_per_slide(
-        slide_chunks,
-        num_questions,
-        language,
+    client = LLMClient()
+
+    # Pedimos algunas preguntas extra para compensar las que se descarten por
+    # validación / duplicados.
+    requested = min(num_questions + 3, num_questions * 2)
+
+    generated = await _request_questions(
+        client, base_content, requested, language
     )
 
-    existing_texts = [q["question"] for q in per_slide_questions]
+    valid_questions: List[Dict[str, Any]] = []
+    existing_texts: List[str] = []
 
-    if len(per_slide_questions) < num_questions:
-        for index, chunk in enumerate(slide_chunks):
-            if len(per_slide_questions) >= num_questions:
-                break
-            fallback = _build_fallback_question_for_slide(index, chunk, language)
-            if not fallback:
-                continue
-            if any(_question_similarity(fallback["question"], existing) >= 0.55 for existing in existing_texts):
-                continue
-            fallback["id"] = len(per_slide_questions) + 1
-            per_slide_questions.append(fallback)
-            existing_texts.append(fallback["question"])
+    def _try_accept(gq: GeneratedQuestion) -> bool:
+        formatted = _format_question(gq, len(valid_questions) + 1)
+        if not formatted:
+            return False
+        if not _basic_validation(formatted["question"], formatted["options"]):
+            return False
+        if not _is_grounded(formatted, content_tokens):
+            logger.info(f"Pregunta descartada por falta de grounding: {formatted['question'][:80]}")
+            return False
+        for existing in existing_texts:
+            if _normalize_for_comparison(formatted["question"]) == _normalize_for_comparison(existing):
+                return False
+            if _question_similarity(formatted["question"], existing) >= 0.55:
+                return False
+        valid_questions.append(formatted)
+        existing_texts.append(formatted["question"])
+        return True
 
-    final_questions = deduplicate_questions(per_slide_questions)[:num_questions]
+    for gq in generated:
+        if len(valid_questions) >= num_questions:
+            break
+        _try_accept(gq)
+
+    # Segunda pasada si faltan preguntas válidas
+    if len(valid_questions) < num_questions:
+        missing = num_questions - len(valid_questions)
+        logger.info(f"Faltan {missing} preguntas válidas, solicitando una pasada adicional")
+        try:
+            extra = await _request_questions(
+                client, base_content, missing + 2, language, existing_texts
+            )
+            for gq in extra:
+                if len(valid_questions) >= num_questions:
+                    break
+                _try_accept(gq)
+        except Exception as exc:
+            logger.warning(f"La pasada adicional de preguntas falló: {exc}")
+
+    final_questions = deduplicate_questions(valid_questions)[:num_questions]
     for index, question in enumerate(final_questions):
         question["id"] = index + 1
 
     if not final_questions:
-        raise ValueError("Could not generate unique questions from presentation content")
+        raise ValueError("Could not generate grounded questions from presentation content")
 
-    logger.info(f"Successfully generated {len(final_questions)} unique questions")
+    logger.info(f"Successfully generated {len(final_questions)} grounded questions")
     for i, q in enumerate(final_questions, 1):
         logger.info(f"  Final Q{i}: {q.get('question', '')}")
 
@@ -580,105 +518,66 @@ async def generate_questions_from_presentation_content(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Fallback: preguntas basadas en análisis del texto (sin LLM)
+# Fallback: preguntas basadas en el texto (sin LLM)
+#
+# Solo se usa si la generación con IA falla por completo. Construye preguntas
+# del tipo "¿qué afirmación aparece en el contenido?" usando frases REALES de los
+# slides como opciones. Nunca inventa información: si no hay suficientes frases
+# reales para 4 opciones, esa pregunta se omite.
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _build_slide_specific_question(
-    slide_index: int,
-    chunk: str,
-    facts: List[Dict[str, str]],
-    language: str,
-) -> str:
-    """Construye un enunciado único según los hechos detectados en el slide."""
-    slide_num = slide_index + 1
-
-    for fact in facts:
-        fact_type = fact.get("type")
-        value = fact.get("value", "")
-
-        if fact_type == "formation":
-            if language == "es":
-                return f"¿Qué formación táctica se menciona en el slide {slide_num}?"
-            return f"What tactical formation is mentioned in slide {slide_num}?"
-
-        if fact_type == "duration":
-            if language == "es":
-                return f"¿Cuánto dura el segmento o actividad descrita en el slide {slide_num}?"
-            return f"How long is the segment or activity described in slide {slide_num}?"
-
-        if fact_type == "players":
-            if language == "es":
-                return f"¿Cuántos jugadores por equipo se indican en el slide {slide_num}?"
-            return f"How many players per team are indicated in slide {slide_num}?"
-
-        if fact_type == "number":
-            if language == "es":
-                return f"¿Qué cifra numérica clave aparece en el slide {slide_num}?"
-            return f"What key numeric figure appears in slide {slide_num}?"
-
-    sentences = [s.strip() for s in re.split(r'[.!?]\s+', chunk) if len(s.strip()) >= 20]
-    if sentences:
-        topic = sentences[0][:80].rstrip(".")
-        if language == "es":
-            return f"Según el slide {slide_num}, ¿qué afirmación resume mejor este contenido: \"{topic}...\"?"
-        return f"According to slide {slide_num}, which statement best summarizes: \"{topic}...\"?"
-
-    if language == "es":
-        return f"¿Qué idea principal se presenta en el slide {slide_num}?"
-    return f"What is the main idea presented in slide {slide_num}?"
+def _split_into_statements(text: str) -> List[str]:
+    """Divide un texto en afirmaciones limpias y razonablemente largas."""
+    sentences = [s.strip() for s in re.split(r'[.!?\n]\s+', text) if len(s.strip()) >= 25]
+    # Recortar para que sean opciones manejables
+    return [s[:140] for s in sentences]
 
 
-def _build_fallback_question_for_slide(
-    slide_index: int,
-    chunk: str,
+def _build_fallback_question_from_statements(
+    question_index: int,
+    correct_statement: str,
+    distractor_pool: List[str],
     language: str,
 ) -> Optional[Dict[str, Any]]:
     """
-    Fallback simple: extrae hechos del slide y crea una pregunta de afirmación.
-    Cada slide produce un enunciado distinto basado en su contenido.
+    Construye una pregunta usando una afirmación verdadera (del contenido) y 3
+    distractores tomados de OTRAS frases reales del contenido. Si no hay 3
+    distractores reales disponibles, devuelve None (no se inventa nada).
     """
-    sentences = [s.strip() for s in re.split(r'[.!?]\s+', chunk) if len(s.strip()) >= 20]
+    distractors: List[str] = []
+    for candidate in distractor_pool:
+        if candidate == correct_statement:
+            continue
+        if candidate in distractors:
+            continue
+        if _question_similarity(candidate, correct_statement) >= 0.7:
+            continue
+        distractors.append(candidate)
+        if len(distractors) == 3:
+            break
 
-    if not sentences:
+    if len(distractors) < 3:
         return None
 
-    facts = _extract_facts_from_slide(chunk)
-    true_statement = sentences[0][:120]
-    question = _build_slide_specific_question(slide_index, chunk, facts, language)
+    options = [correct_statement] + distractors
+    # Validar que las 4 opciones sean distintas
+    if len(set(opt.strip().lower() for opt in options)) < 4:
+        return None
 
     if language == "es":
-        explanation = f"El slide indica que: {true_statement}"
-        false_prefix = "Esta información no aparece en el contenido"
+        question_text = "¿Cuál de las siguientes afirmaciones corresponde al contenido de la presentación?"
+        explanation = f"El contenido indica que: {correct_statement}"
     else:
-        explanation = f"The slide states that: {true_statement}"
-        false_prefix = "This information does not appear in the content"
+        question_text = "Which of the following statements matches the presentation content?"
+        explanation = f"The content states that: {correct_statement}"
 
-    options = [true_statement]
-
-    for sent in sentences[1:4]:
-        if sent != true_statement and len(sent) >= 15:
-            options.append(sent[:120])
-
-    while len(options) < 4:
-        options.append(f"{false_prefix} ({len(options)})")
-
-    options = list(dict.fromkeys(options))[:4]
-
-    while len(options) < 4:
-        options.append(f"{false_prefix} ({len(options)})")
-
-    question_data = {
-        "id": slide_index + 1,
-        "question": question,
+    return {
+        "id": question_index + 1,
+        "question": question_text,
         "options": options,
         "correctAnswer": 0,
         "explanation": explanation,
     }
-
-    if len(question_data["options"]) != 4:
-        return None
-
-    return question_data
 
 
 def generate_fallback_questions(
@@ -688,27 +587,45 @@ def generate_fallback_questions(
     outlines: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Genera preguntas de fallback analizando el texto sin LLM.
-    Crea una pregunta distinta por cada slide o frase relevante.
+    Genera preguntas de respaldo (sin LLM) usando exclusivamente frases reales del
+    contenido como opciones. No inventa información.
     """
     slide_chunks: List[str] = []
     if outlines:
         slide_chunks = extract_slide_chunks(outlines)
 
     if not slide_chunks:
-        analysis_content = re.sub(r'\[Slide \d+\]', '', content)
-        slide_chunks = [
-            sentence.strip()
-            for sentence in re.split(r'[.!?]\s+', analysis_content)
-            if len(sentence.strip()) >= 35
-        ]
+        cleaned = re.sub(r'\[Slide \d+\]', '', content)
+        slide_chunks = [cleaned]
+
+    # Reunir todas las afirmaciones reales disponibles
+    all_statements: List[str] = []
+    for chunk in slide_chunks:
+        for statement in _split_into_statements(chunk):
+            if statement not in all_statements:
+                all_statements.append(statement)
 
     questions: List[Dict[str, Any]] = []
-    for index, chunk in enumerate(slide_chunks):
+    used_correct: List[str] = []
+
+    for correct_statement in all_statements:
         if len(questions) >= num_questions:
             break
-        fallback = _build_fallback_question_for_slide(index, chunk, language)
-        if fallback:
-            questions.append(fallback)
+        if correct_statement in used_correct:
+            continue
+        # Distractores = otras frases reales del contenido
+        distractor_pool = [s for s in all_statements if s != correct_statement]
+        question = _build_fallback_question_from_statements(
+            len(questions), correct_statement, distractor_pool, language
+        )
+        if question:
+            questions.append(question)
+            used_correct.append(correct_statement)
 
-    return deduplicate_questions(questions)[:num_questions]
+    # No se deduplica por enunciado: todas las preguntas de respaldo comparten el
+    # mismo enunciado pero tienen respuestas correctas distintas (ya garantizadas
+    # únicas mediante `used_correct`).
+    final = questions[:num_questions]
+    for index, question in enumerate(final):
+        question["id"] = index + 1
+    return final

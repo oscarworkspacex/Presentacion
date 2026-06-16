@@ -83,6 +83,11 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
 
     const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
         setSelectedAnswers((prev) => {
+            // Una vez seleccionada, la respuesta queda bloqueada y no se puede
+            // cambiar (evita falsificar el resultado tras ver la explicación).
+            if (prev[questionIndex] !== -1) {
+                return prev;
+            }
             const next = [...prev];
             next[questionIndex] = answerIndex;
             return next;
@@ -222,39 +227,88 @@ const QuizSlideLayout: React.FC<QuizSlideLayoutProps> = ({ data: slideData }) =>
                     </h2>
 
                     <div className="space-y-3">
-                        {currentQ.options.map((option, index) => (
-                            <button
-                                type="button"
-                                key={`q${currentQuestion}-opt${index}`}
-                                onClick={() => handleAnswerSelect(currentQuestion, index)}
-                                className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                                    selectedAnswers[currentQuestion] === index
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                }`}
-                            >
-                                <div className="flex items-center">
-                                    <div className={`w-4 h-4 rounded-full border-2 mr-3 shrink-0 ${
-                                        selectedAnswers[currentQuestion] === index
-                                            ? 'border-blue-500 bg-blue-500'
-                                            : 'border-gray-300'
-                                    }`}>
-                                        {selectedAnswers[currentQuestion] === index && (
-                                            <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                                        )}
+                        {currentQ.options.map((option, index) => {
+                            const isLocked = selectedAnswers[currentQuestion] !== -1;
+                            const isSelected = selectedAnswers[currentQuestion] === index;
+                            const isCorrectOption = index === currentQ.correctAnswer;
+                            const isWrongSelection = isLocked && isSelected && !isCorrectOption;
+
+                            let optionClasses = 'border-gray-200 hover:border-gray-300 hover:bg-gray-50';
+                            if (isLocked) {
+                                if (isCorrectOption) {
+                                    optionClasses = 'border-green-500 bg-green-50 text-green-800';
+                                } else if (isWrongSelection) {
+                                    optionClasses = 'border-red-500 bg-red-50 text-red-800';
+                                } else {
+                                    optionClasses = 'border-gray-200 bg-white text-gray-400';
+                                }
+                            } else if (isSelected) {
+                                optionClasses = 'border-blue-500 bg-blue-50 text-blue-700';
+                            }
+
+                            let markerClasses = 'border-gray-300';
+                            if (isLocked) {
+                                if (isCorrectOption) {
+                                    markerClasses = 'border-green-500 bg-green-500';
+                                } else if (isWrongSelection) {
+                                    markerClasses = 'border-red-500 bg-red-500';
+                                }
+                            } else if (isSelected) {
+                                markerClasses = 'border-blue-500 bg-blue-500';
+                            }
+
+                            return (
+                                <button
+                                    type="button"
+                                    key={`q${currentQuestion}-opt${index}`}
+                                    onClick={() => handleAnswerSelect(currentQuestion, index)}
+                                    disabled={isLocked}
+                                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                                        isLocked ? 'cursor-not-allowed' : ''
+                                    } ${optionClasses}`}
+                                >
+                                    <div className="flex items-center">
+                                        <div className={`w-5 h-5 rounded-full border-2 mr-3 shrink-0 flex items-center justify-center ${markerClasses}`}>
+                                            {isLocked && isCorrectOption && (
+                                                <span className="text-white text-xs font-bold leading-none">✓</span>
+                                            )}
+                                            {isWrongSelection && (
+                                                <span className="text-white text-xs font-bold leading-none">✗</span>
+                                            )}
+                                            {!isLocked && isSelected && (
+                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                            )}
+                                        </div>
+                                        <span>{option}</span>
                                     </div>
-                                    <span className="text-gray-700">{option}</span>
-                                </div>
-                            </button>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {selectedAnswers[currentQuestion] !== -1 && (
-                        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-blue-800">
-                                <strong>Explicación:</strong> {currentQ.explanation}
-                            </p>
-                        </div>
+                        <>
+                            <div className={`mt-6 p-4 rounded-lg ${
+                                selectedAnswers[currentQuestion] === currentQ.correctAnswer
+                                    ? 'bg-green-50'
+                                    : 'bg-red-50'
+                            }`}>
+                                <p className={`text-sm font-semibold mb-1 ${
+                                    selectedAnswers[currentQuestion] === currentQ.correctAnswer
+                                        ? 'text-green-800'
+                                        : 'text-red-800'
+                                }`}>
+                                    {selectedAnswers[currentQuestion] === currentQ.correctAnswer
+                                        ? '✓ ¡Respuesta correcta!'
+                                        : '✗ Respuesta incorrecta'}
+                                </p>
+                            </div>
+                            <div className="mt-3 p-4 bg-blue-50 rounded-lg">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Explicación:</strong> {currentQ.explanation}
+                                </p>
+                            </div>
+                        </>
                     )}
                 </div>
 
