@@ -289,6 +289,86 @@ class TestImageGenerationService:
         
         asyncio.run(run_test())
 
+    def test_generate_image_openai_b64_json(self, mock_images_directory):
+        """Test OpenAI GPT Image generation with b64_json response."""
+        async def run_test():
+            import base64
+
+            with patch.dict(
+                os.environ,
+                {"IMAGE_PROVIDER": "dall-e-3", "OPENAI_IMAGE_MODEL": "gpt-image-1.5"},
+            ):
+                service = ImageGenerationService(mock_images_directory)
+
+                fake_png = b"fake-image-bytes"
+                mock_result = Mock()
+                mock_image_data = Mock()
+                mock_image_data.b64_json = base64.b64encode(fake_png).decode("utf-8")
+                mock_image_data.url = None
+                mock_result.data = [mock_image_data]
+
+                mock_client = AsyncMock()
+                mock_client.images.generate = AsyncMock(return_value=mock_result)
+
+                with patch(
+                    "services.image_generation_service.AsyncOpenAI",
+                    return_value=mock_client,
+                ):
+                    result = await service.generate_image_openai(
+                        "A sunset over mountains", mock_images_directory
+                    )
+
+                    assert os.path.exists(result)
+                    with open(result, "rb") as f:
+                        assert f.read() == fake_png
+                    mock_client.images.generate.assert_called_once_with(
+                        model="gpt-image-1.5",
+                        prompt="A sunset over mountains",
+                        n=1,
+                        size="1024x1024",
+                    )
+
+        asyncio.run(run_test())
+
+    def test_sanitize_image_prompt_truncates_long_prompts(self):
+        from services.image_generation_service import sanitize_image_prompt, IMAGE_PROMPT_MAX_LENGTH
+
+        long_prompt = "a" * (IMAGE_PROMPT_MAX_LENGTH + 50)
+        result = sanitize_image_prompt(long_prompt)
+        assert len(result) == IMAGE_PROMPT_MAX_LENGTH
+
+    def test_is_retryable_image_error(self):
+        from services.image_generation_service import is_retryable_image_error
+
+        assert is_retryable_image_error(Exception("HTTP 429 rate limit exceeded"))
+        assert is_retryable_image_error(Exception("503 temporarily unavailable"))
+        assert not is_retryable_image_error(Exception("invalid api key"))
+
+    def test_generate_with_retry_succeeds_after_transient_error(self, mock_images_directory):
+        async def run_test():
+            from services.image_generation_service import generate_with_retry
+
+            attempts = {"count": 0}
+
+            async def flaky():
+                attempts["count"] += 1
+                if attempts["count"] < 2:
+                    raise Exception("429 rate limit")
+                return "ok"
+
+            result = await generate_with_retry(flaky)
+            assert result == "ok"
+            assert attempts["count"] == 2
+
+        asyncio.run(run_test())
+
+    def test_get_image_generation_max_concurrent_env_defaults(self):
+        from utils.get_env import get_image_generation_max_concurrent_env
+
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("IMAGE_GENERATION_MAX_CONCURRENT", None)
+            assert get_image_generation_max_concurrent_env() == 2
+
 
 class TestImageGenerationEndpoint:
     """

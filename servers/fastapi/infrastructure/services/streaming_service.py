@@ -17,12 +17,47 @@ from models.presentation_outline_model import PresentationOutlineModel
 from models.presentation_with_slides import PresentationWithSlides
 from models.sql.slide import SlideModel
 from models.sse_response import SSECompleteResponse, SSEErrorResponse, SSEResponse
+from enums.image_provider import ImageProvider
 from services.image_generation_service import ImageGenerationService
 from utils.asset_directory_utils import get_images_directory
+from utils.get_env import (
+    get_google_api_key_env,
+    get_google_image_model_env,
+    get_openai_api_key_env,
+    get_openai_image_model_env,
+    get_pexels_api_key_env,
+    get_pixabay_api_key_env,
+)
+from utils.image_provider import get_selected_image_provider
 from utils.llm_calls.generate_slide_content import get_slide_content_from_type_and_outline
-from utils.process_slides import process_slide_add_placeholder_assets, process_slide_and_fetch_assets
+from utils.process_slides import (
+    count_slide_images,
+    process_slide_add_placeholder_assets,
+    process_slide_and_fetch_assets,
+)
 
 logger = get_logger(__name__)
+
+
+def _validate_image_provider_config() -> str | None:
+    """Return an error message when image generation is not configured."""
+    selected_provider = get_selected_image_provider()
+    if not selected_provider:
+        return "IMAGE_PROVIDER is not configured. Set it in Settings or your environment."
+
+    if selected_provider == ImageProvider.PEXELS and not get_pexels_api_key_env():
+        return "PEXELS_API_KEY is required when IMAGE_PROVIDER=pexels."
+
+    if selected_provider == ImageProvider.PIXABAY and not get_pixabay_api_key_env():
+        return "PIXABAY_API_KEY is required when IMAGE_PROVIDER=pixabay."
+
+    if selected_provider == ImageProvider.DALLE3 and not get_openai_api_key_env():
+        return "OPENAI_API_KEY is required when IMAGE_PROVIDER=dall-e-3."
+
+    if selected_provider == ImageProvider.GEMINI_FLASH and not get_google_api_key_env():
+        return "GOOGLE_API_KEY is required when IMAGE_PROVIDER=gemini_flash."
+
+    return None
 
 
 class StreamingService:
@@ -78,6 +113,11 @@ class StreamingService:
         if not presentation.outlines:
             yield SSEErrorResponse(detail="Outlines can not be empty").to_string()
             return
+
+        image_config_error = _validate_image_provider_config()
+        if image_config_error:
+            yield SSEErrorResponse(detail=image_config_error).to_string()
+            return
         
         try:
             async for chunk in self._generate_and_stream_slides(presentation, presentation_id):
@@ -105,6 +145,17 @@ class StreamingService:
         outline = presentation.get_presentation_outline()
         
         image_service = ImageGenerationService(get_images_directory())
+        selected_provider = get_selected_image_provider()
+        image_model = None
+        if selected_provider == ImageProvider.DALLE3:
+            image_model = get_openai_image_model_env()
+        elif selected_provider == ImageProvider.GEMINI_FLASH:
+            image_model = get_google_image_model_env()
+        logger.info(
+            "Starting image generation: provider=%s model=%s",
+            selected_provider.value if selected_provider else None,
+            image_model,
+        )
         async_assets_tasks = []
         slides: List[SlideModel] = []
         
@@ -188,9 +239,24 @@ class StreamingService:
             **presentation.model_dump(),
             slides=slides,
         )
-        yield SSECompleteResponse(
-            key="presentation",
-            value=response.model_dump(mode="json"),
+        total_images, failed_images = count_slide_images(slides)
+        logger.info(
+            "Image generation complete: %d/%d successful",
+            total_images - failed_images,
+            total_images,
+        )
+        yield SSEResponse(
+            event="response",
+            data=json.dumps(
+                {
+                    "type": "complete",
+                    "presentation": response.model_dump(mode="json"),
+                    "image_generation_stats": {
+                        "total": total_images,
+                        "failed": failed_images,
+                    },
+                }
+            ),
         ).to_string()
         
         logger.info(f"Completed streaming generation: {presentation_id}")

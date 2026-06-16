@@ -45,8 +45,8 @@ export const IMAGE_PROVIDERS: Record<string, ImageProviderOption> = {
   },
   "dall-e-3": {
     value: "dall-e-3",
-    label: "DALL-E 3",
-    description: "OpenAI's latest image generation model",
+    label: "GPT Image (OpenAI)",
+    description: "OpenAI GPT Image models (default: gpt-image-1.5). Replaces deprecated DALL-E 3.",
     icon: "/icons/dall-e.png",
     requiresApiKey: true,
     apiKeyField: "OPENAI_API_KEY",
@@ -54,8 +54,8 @@ export const IMAGE_PROVIDERS: Record<string, ImageProviderOption> = {
   },
   gemini_flash: {
     value: "gemini_flash",
-    label: "Gemini Flash",
-    description: "Google's primary image generation model",
+    label: "Gemini Flash Image",
+    description: "Google Gemini image generation (default: gemini-3.1-flash-image)",
     icon: "/icons/google.png",
     requiresApiKey: true,
     apiKeyField: "GOOGLE_API_KEY",

@@ -1,5 +1,7 @@
 import { ApiError } from "@/models/errors";
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import puppeteer, { Browser, ElementHandle, Page } from "puppeteer";
 import {
   ElementAttributes,

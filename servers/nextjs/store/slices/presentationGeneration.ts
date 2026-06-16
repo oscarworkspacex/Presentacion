@@ -166,10 +166,23 @@ const presentationGenerationSlice = createSlice({
     },
     // Presentation ID
     setPresentationId: (state, action: PayloadAction<string>) => {
+      if (state.presentation_id !== action.payload) {
+        state.themes = [];
+        state.selectedThemeIndex = null;
+        state.selectedCollectionId = null;
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("presenton_selected_theme_index", "");
+            localStorage.setItem("presenton_selected_collection_id", "");
+          } catch (error) {
+            console.error("Error clearing theme selection from localStorage:", error);
+          }
+        }
+      }
       state.presentation_id = action.payload;
       state.error = null;
     },
-    // Slides rendereimport { useEffect } from "react"d
+    // Slides rendered
     setSlidesRendered: (state, action: PayloadAction<boolean>) => {
       state.isSlidesRendered = action.payload;
     },
@@ -184,6 +197,19 @@ const presentationGenerationSlice = createSlice({
     },
     clearOutlines: (state) => {
       state.outlines = [];
+    },
+    resetSessionThemes: (state) => {
+      state.themes = [];
+      state.selectedThemeIndex = null;
+      state.selectedCollectionId = null;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("presenton_selected_theme_index", "");
+          localStorage.setItem("presenton_selected_collection_id", "");
+        } catch (error) {
+          console.error("Error clearing theme selection from localStorage:", error);
+        }
+      }
     },
     // Set outlines
     setOutlines: (state, action: PayloadAction<{ content: string }[]>) => {
@@ -221,26 +247,32 @@ const presentationGenerationSlice = createSlice({
     // Select theme and update outlines
     selectTheme: (state, action: PayloadAction<{ themeIndex: number }>) => {
       const { themeIndex } = action.payload;
-      if (state.savedThemes && state.savedThemes[themeIndex]) {
-        const selectedTheme = state.savedThemes[themeIndex];
-        state.selectedThemeIndex = themeIndex;
-        
-        // Persist selected theme index to localStorage
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('presenton_selected_theme_index', themeIndex.toString());
-          } catch (error) {
-            console.error('Error saving selected theme index to localStorage:', error);
-          }
+      const collection = state.selectedCollectionId
+        ? state.themeCollections.find((c) => c.id === state.selectedCollectionId)
+        : null;
+      const selectedTheme =
+        state.themes[themeIndex] ??
+        collection?.themes[themeIndex] ??
+        state.savedThemes[themeIndex];
+
+      if (!selectedTheme) {
+        return;
+      }
+
+      state.selectedThemeIndex = themeIndex;
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("presenton_selected_theme_index", themeIndex.toString());
+        } catch (error) {
+          console.error("Error saving selected theme index to localStorage:", error);
         }
-        
-        // Update outlines from the selected theme's presentation slides
-        if (selectedTheme.presentation && selectedTheme.presentation.slides) {
-          state.outlines = selectedTheme.presentation.slides;
-          // Generate a temporary presentation_id if we don't have one
-          if (!state.presentation_id) {
-            state.presentation_id = `theme-${Date.now()}`;
-          }
+      }
+
+      if (selectedTheme.presentation?.slides) {
+        state.outlines = selectedTheme.presentation.slides;
+        if (!state.presentation_id) {
+          state.presentation_id = `theme-${Date.now()}`;
         }
       }
     },
@@ -674,6 +706,7 @@ export const {
   setError,
   clearPresentationData,
   clearOutlines,
+  resetSessionThemes,
   deleteSlideOutline,
   setPresentationData,
   setOutlines,

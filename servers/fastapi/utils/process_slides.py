@@ -5,8 +5,26 @@ from models.sql.image_asset import ImageAsset
 from models.sql.slide import SlideModel
 from services.icon_finder_service import ICON_FINDER_SERVICE
 from services.image_generation_service import ImageGenerationService
-from utils.asset_directory_utils import get_images_directory
+from utils.asset_directory_utils import PLACEHOLDER_IMAGE_URL, to_image_web_url
 from utils.dict_utils import get_dict_at_path, get_dict_paths_with_key, set_dict_at_path
+
+
+def _is_placeholder_result(result: str | ImageAsset) -> bool:
+    if isinstance(result, ImageAsset):
+        return False
+    return result == PLACEHOLDER_IMAGE_URL or "placeholder.jpg" in str(result)
+
+
+def _apply_image_result(
+    image_dict: dict,
+    result: str | ImageAsset,
+    return_assets: List[ImageAsset],
+) -> None:
+    if isinstance(result, ImageAsset):
+        return_assets.append(result)
+        image_dict["__image_url__"] = to_image_web_url(result.path)
+    else:
+        image_dict["__image_url__"] = to_image_web_url(result)
 
 
 async def process_slide_and_fetch_assets(
@@ -39,14 +57,13 @@ async def process_slide_and_fetch_assets(
     results.reverse()
 
     return_assets = []
+    image_results: list[tuple[str, str | ImageAsset]] = []
+
     for image_path in image_paths:
         image_dict = get_dict_at_path(slide.content, image_path)
         result = results.pop()
-        if isinstance(result, ImageAsset):
-            return_assets.append(result)
-            image_dict["__image_url__"] = result.path
-        else:
-            image_dict["__image_url__"] = result
+        image_results.append((image_path, result))
+        _apply_image_result(image_dict, result, return_assets)
         set_dict_at_path(slide.content, image_path, image_dict)
 
     for icon_path in icon_paths:
@@ -54,7 +71,40 @@ async def process_slide_and_fetch_assets(
         icon_dict["__icon_url__"] = results.pop()[0]
         set_dict_at_path(slide.content, icon_path, icon_dict)
 
+    # Second pass: retry failed images sequentially
+    for image_path, result in image_results:
+        if not _is_placeholder_result(result):
+            continue
+
+        image_dict = get_dict_at_path(slide.content, image_path)
+        retry_result = await image_generation_service.generate_image(
+            ImagePrompt(prompt=image_dict["__image_prompt__"])
+        )
+        if _is_placeholder_result(retry_result):
+            continue
+
+        if isinstance(retry_result, ImageAsset):
+            return_assets.append(retry_result)
+            image_dict["__image_url__"] = to_image_web_url(retry_result.path)
+        else:
+            image_dict["__image_url__"] = to_image_web_url(retry_result)
+        set_dict_at_path(slide.content, image_path, image_dict)
+
     return return_assets
+
+
+def count_slide_images(slides: List[SlideModel]) -> Tuple[int, int]:
+    total = 0
+    failed = 0
+    for slide in slides:
+        image_paths = get_dict_paths_with_key(slide.content, "__image_prompt__")
+        for image_path in image_paths:
+            total += 1
+            image_dict = get_dict_at_path(slide.content, image_path)
+            url = image_dict.get("__image_url__", "")
+            if not url or "placeholder.jpg" in str(url):
+                failed += 1
+    return total, failed
 
 
 async def process_old_and_new_slides_and_fetch_assets(
@@ -152,9 +202,9 @@ async def process_old_and_new_slides_and_fetch_assets(
             fetched_image = new_images[i]
             if isinstance(fetched_image, ImageAsset):
                 new_assets.append(fetched_image)
-                image_url = fetched_image.path
+                image_url = to_image_web_url(fetched_image.path)
             else:
-                image_url = fetched_image
+                image_url = to_image_web_url(fetched_image)
             new_image_dicts[i]["__image_url__"] = image_url
 
     for i, new_icon in enumerate(new_icons):
@@ -177,7 +227,7 @@ def process_slide_add_placeholder_assets(slide: SlideModel):
 
     for image_path in image_paths:
         image_dict = get_dict_at_path(slide.content, image_path)
-        image_dict["__image_url__"] = "/static/images/placeholder.jpg"
+        image_dict["__image_url__"] = PLACEHOLDER_IMAGE_URL
         set_dict_at_path(slide.content, image_path, image_dict)
 
     for icon_path in icon_paths:

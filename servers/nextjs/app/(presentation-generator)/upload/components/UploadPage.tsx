@@ -13,7 +13,7 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { clearOutlines, setPresentationId } from "@/store/slices/presentationGeneration";
+import { clearOutlines, resetSessionThemes, setPresentationId } from "@/store/slices/presentationGeneration";
 import { ConfigurationSelects } from "./ConfigurationSelects";
 import { PromptInput } from "./PromptInput";
 import {  LanguageType, PresentationConfig, ToneType, VerbosityType } from "../type";
@@ -139,7 +139,8 @@ const UploadPage = () => {
       config,
       files: responses,
     }));
-    dispatch(clearOutlines())
+    dispatch(clearOutlines());
+    dispatch(resetSessionThemes());
     trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/documents-preview" });
     router.push("/documents-preview");
   };
@@ -172,7 +173,8 @@ const UploadPage = () => {
 
 
     dispatch(setPresentationId(createResponse.id));
-    dispatch(clearOutlines())
+    dispatch(clearOutlines());
+    dispatch(resetSessionThemes());
     trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/outline" });
     router.push("/outline");
   };

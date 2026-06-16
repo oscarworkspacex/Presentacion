@@ -1,10 +1,10 @@
 'use client'
-import React from "react";
+import React, { Suspense } from "react";
 import PresentationPage from "./components/PresentationPage";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
-const page = () => {
 
+const PresentationPageContent = () => {
   const router = useRouter();
   const params = useSearchParams();
   const queryId = params.get("id");
@@ -17,10 +17,14 @@ const page = () => {
       </div>
     );
   }
+  return <PresentationPage presentation_id={queryId} />;
+};
+
+const page = () => {
   return (
-
-    <PresentationPage presentation_id={queryId} />
-
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+      <PresentationPageContent />
+    </Suspense>
   );
 };
 export default page;

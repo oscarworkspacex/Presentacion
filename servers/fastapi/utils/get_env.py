@@ -49,12 +49,20 @@ def get_openai_model_env():
     return os.getenv("OPENAI_MODEL")
 
 
+def get_openai_image_model_env():
+    return os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1.5"
+
+
 def get_google_api_key_env():
     return os.getenv("GOOGLE_API_KEY")
 
 
 def get_google_model_env():
     return os.getenv("GOOGLE_MODEL")
+
+
+def get_google_image_model_env():
+    return os.getenv("GOOGLE_IMAGE_MODEL") or "gemini-3.1-flash-image"
 
 
 def get_custom_llm_api_key_env():
@@ -75,6 +83,15 @@ def get_pexels_api_key_env():
 
 def get_image_provider_env():
     return os.getenv("IMAGE_PROVIDER")
+
+
+def get_image_generation_max_concurrent_env() -> int:
+    raw = os.getenv("IMAGE_GENERATION_MAX_CONCURRENT", "2")
+    try:
+        value = int(raw)
+        return max(1, min(value, 10))
+    except ValueError:
+        return 2
 
 
 def get_pixabay_api_key_env():

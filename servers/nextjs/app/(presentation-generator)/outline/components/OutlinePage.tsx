@@ -18,8 +18,9 @@ import { useOutlineStreaming } from "../hooks/useOutlineStreaming";
 import { useOutlineManagement } from "../hooks/useOutlineManagement";
 import { usePresentationGeneration } from "../hooks/usePresentationGeneration";
 import { useThemesStreaming } from "../hooks/useThemesStreaming";
-import { selectTheme, setSavedThemes, saveThemeCollection, selectThemeInCollection, setPresentationId, cleanTestThemes } from "@/store/slices/presentationGeneration";
+import { selectTheme, saveThemeCollection, selectThemeInCollection, setPresentationId, setThemes, cleanTestThemes } from "@/store/slices/presentationGeneration";
 import { PresentationGenerationApi } from "../../services/api/presentation-generation";
+import { DashboardApi } from "../../services/api/dashboard";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
 
@@ -33,7 +34,28 @@ const OutlinePage: React.FC = () => {
   // Limpiar automáticamente temas de prueba al cargar la página (una sola vez)
   useEffect(() => {
     dispatch(cleanTestThemes());
-  }, []); // Array vacío para que solo se ejecute una vez
+  }, []);
+
+  useEffect(() => {
+    if (!presentation_id) return;
+
+    let cancelled = false;
+    DashboardApi.getPresentation(presentation_id)
+      .then((data: { themes?: { themes?: unknown[] } }) => {
+        if (cancelled) return;
+        const themesFromDb = data.themes?.themes;
+        if (Array.isArray(themesFromDb) && themesFromDb.length > 0) {
+          dispatch(setThemes(themesFromDb));
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading themes from backend:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [presentation_id, dispatch]);
 
   const [activeTab, setActiveTab] = useState<string>(TABS.OUTLINE);
   const [selectedLayoutGroup, setSelectedLayoutGroup] = useState<LayoutGroup | null>(null);
@@ -125,7 +147,7 @@ const OutlinePage: React.FC = () => {
       // Obtener el tema seleccionado
       const currentTheme = selectedCollectionId
         ? themeCollections?.find(c => c.id === selectedCollectionId)?.themes[themeIndex]
-        : savedThemes?.[themeIndex];
+        : themes?.[themeIndex] ?? savedThemes?.[themeIndex];
 
       if (!currentTheme) {
         toast.error("No se pudo encontrar el tema seleccionado");
@@ -273,6 +295,7 @@ const OutlinePage: React.FC = () => {
                   <ThemesContent
                     themes={themes}
                     savedThemes={savedThemes}
+                    presentationId={presentation_id}
                     selectedThemeIndex={selectedThemeIndex}
                     isLoading={themesLoading}
                     isStreaming={themesStreaming}

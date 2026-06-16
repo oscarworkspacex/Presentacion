@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import Header from '@/app/(presentation-generator)/dashboard/components/Header'
 import { Metadata } from 'next'
 import OutlinePage from './components/OutlinePage'
@@ -25,7 +25,9 @@ const page = () => {
   return (
     <div className='relative min-h-screen'>
       <Header />
-      <OutlinePage />
+      <Suspense fallback={<div className="flex items-center justify-center min-h-[50vh]">Loading...</div>}>
+        <OutlinePage />
+      </Suspense>
     </div>
   )
 }

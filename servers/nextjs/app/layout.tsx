@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Roboto, Instrument_Sans } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { Providers } from "./providers";
 import MixpanelInitializer from "./MixpanelInitializer";
@@ -87,17 +88,19 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${roboto.variable} ${instrument_sans.variable} antialiased`}
       >
-        <ApiKeyHandler>
-          <AuthProvider>
-            <Providers>
-              <MixpanelInitializer>
-                <LayoutProvider>
-                  {children}
-                </LayoutProvider>
-              </MixpanelInitializer>
-            </Providers>
-          </AuthProvider>
-        </ApiKeyHandler>
+        <Suspense fallback={null}>
+          <ApiKeyHandler>
+            <AuthProvider>
+              <Providers>
+                <MixpanelInitializer>
+                  <LayoutProvider>
+                    {children}
+                  </LayoutProvider>
+                </MixpanelInitializer>
+              </Providers>
+            </AuthProvider>
+          </ApiKeyHandler>
+        </Suspense>
         <Toaster position="top-center" />
       </body>
     </html>

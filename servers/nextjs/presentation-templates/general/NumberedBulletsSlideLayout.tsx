@@ -33,13 +33,9 @@ const numberedBulletsSlideSchema = z.object({
             description: 'The survey revealed that 78% of businesses plan to invest in digital solutions, and 85% prefer a tailored approach.'
         },
         {
-            title: 'Pilot Program Success',
-            description: 'The survey revealed that 78% of businesses plan to invest in digital solutions, and 85% prefer a tailored approach.'
+            title: 'Market Validation',
+            description: 'Early adopters reported a 40% improvement in engagement after implementing the proposed strategy.'
         },
-        {
-            title: 'Pilot Program Success',
-            description: 'The survey revealed that 78% of businesses plan to invest in digital solutions, and 85% prefer a tailored approach.'
-        }
     ]).meta({
         description: "List of numbered bullet points with descriptions",
     })
@@ -54,7 +50,13 @@ interface NumberedBulletsSlideLayoutProps {
 }
 
 const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({ data: slideData }) => {
-    const bulletPoints = slideData?.bulletPoints || []
+    const bulletPoints = (slideData?.bulletPoints || []).slice(0, 3)
+    const bulletGridCols =
+        bulletPoints.length === 3
+            ? 'grid-cols-3'
+            : bulletPoints.length === 2
+              ? 'grid-cols-2'
+              : 'grid-cols-1'
 
     return (
         <>
@@ -71,7 +73,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                 }}
             >
                 {(slideData as any)?.__companyName__ && (
-                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4">
+                    <div className="absolute top-0 left-0 right-0 px-8 sm:px-12 lg:px-20 pt-4 z-10">
                         <div className="flex items-center gap-4">
                             <span className="text-sm sm:text-base font-semibold" style={{ color: 'var(--text-heading-color, #111827)' }}>
                                 {(slideData as any)?.__companyName__ || 'Company Name'}
@@ -81,78 +83,85 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                     </div>
                 )}
 
-                {/* Main Content Container */}
-                <div className="px-8 sm:px-12 lg:px-20 pt-12 pb-8 h-full">
-                    {/* Top Section - Title and Image */}
-                    <div className="flex items-start justify-between mb-8">
-                        {/* Title Section */}
-                        <div className="flex-1 pr-8">
-                            <h1 style={{ color: "var(--text-heading-color,#111827)" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-4">
+                <div className="relative z-10 flex flex-col h-full px-8 sm:px-12 lg:px-20 pt-8 pb-6">
+                    <div className="flex items-center justify-between gap-6 mb-6">
+                        <div className="flex-1 min-w-0">
+                            <h1
+                                style={{ color: "var(--text-heading-color,#111827)" }}
+                                className="text-3xl lg:text-4xl font-bold leading-tight line-clamp-2 mb-3"
+                            >
                                 {slideData?.title || 'Market Validation'}
                             </h1>
-                            {/* Purple accent line */}
-                            <div style={{background:"var(--text-heading-color,#9333ea)"}} className="w-24 h-1 bg-purple-600 mb-6"></div>
+                            <div
+                                style={{ background: "var(--text-heading-color,#9333ea)" }}
+                                className="w-20 h-1"
+                            />
                         </div>
 
-                        {/* Image Section */}
-                        <div className="flex-shrink-0 w-80 h-48">
+                        <div className="flex-shrink-0 w-64 h-40">
                             <img
                                 src={slideData?.image?.__image_url__ || ''}
                                 alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
-                                className="w-full h-full object-cover rounded-lg shadow-md" style={{background:"var(--tertiary-accent-color,#e5e7eb)"}}
+                                className="w-full h-full object-cover rounded-lg shadow-md"
+                                style={{ background: "var(--tertiary-accent-color,#e5e7eb)" }}
                             />
                         </div>
                     </div>
 
-                    {/* Numbered Bullet Points */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div className={`grid ${bulletGridCols} gap-4 flex-1 min-h-0`}>
                         {bulletPoints.map((bullet, index) => (
-                            <div key={index} className="flex items-start space-x-4">
-                                {/* Number */}
-                                <div className="flex-shrink-0">
-                                    <div style={{color:"var(--text-heading-color,#111827)"}} className="text-4xl sm:text-5xl font-bold text-gray-900">
+                            <div key={index} className="flex items-start gap-3">
+                                <div className="flex-shrink-0 pt-1">
+                                    <div
+                                        style={{ color: "var(--text-heading-color,#111827)" }}
+                                        className="text-3xl font-bold"
+                                    >
                                         {String(index + 1).padStart(2, '0')}
                                     </div>
                                 </div>
 
-                                {/* Content */}
-                                <div className="flex-1 pt-2">
-                                    <h3 style={{color:"var(--text-heading-color,#111827)"}} className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
+                                <div className="flex-1 min-w-0">
+                                    <h3
+                                        style={{ color: "var(--text-heading-color,#111827)" }}
+                                        className="text-lg font-bold mb-2 line-clamp-2"
+                                    >
                                         {bullet.title}
                                     </h3>
-                                    <p style={{color:"var(--text-body-color,#4b5563)"}} className="text-base text-gray-700 leading-relaxed">
+                                    <p
+                                        style={{ color: "var(--text-body-color,#4b5563)" }}
+                                        className="text-sm leading-relaxed line-clamp-4"
+                                    >
                                         {bullet.description}
                                     </p>
                                 </div>
                             </div>
                         ))}
                     </div>
+                </div>
 
-                    {/* Decorative Wave Pattern at Bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 h-20 overflow-hidden">
-                        <svg
-                            className="w-full h-full opacity-20"
-                            viewBox="0 0 1200 200"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                d="M0 100C300 150 600 50 900 100C1050 125 1125 100 1200 100V200H0V100Z"
-                                fill="url(#wave-gradient)"
-                            />
-                            <defs>
-                                <linearGradient id="wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="var(--primary-accent-color,#9333ea)" />
-                                    <stop offset="50%" stopColor="var(--primary-accent-color,#9333ea)" />
-                                    <stop offset="100%" stopColor="var(--primary-accent-color,#9333ea)" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
+                <div className="absolute bottom-0 left-0 right-0 h-16 overflow-hidden pointer-events-none z-0">
+                    <svg
+                        className="w-full h-full opacity-20"
+                        viewBox="0 0 1200 200"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            d="M0 100C300 150 600 50 900 100C1050 125 1125 100 1200 100V200H0V100Z"
+                            fill="url(#wave-gradient)"
+                        />
+                        <defs>
+                            <linearGradient id="wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="var(--primary-accent-color,#9333ea)" />
+                                <stop offset="50%" stopColor="var(--primary-accent-color,#9333ea)" />
+                                <stop offset="100%" stopColor="var(--primary-accent-color,#9333ea)" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
                 </div>
             </div>
         </>
     )
 }
 
-export default NumberedBulletsSlideLayout 
+export default NumberedBulletsSlideLayout

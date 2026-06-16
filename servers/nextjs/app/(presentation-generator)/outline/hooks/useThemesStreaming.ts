@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
-import { setThemes, setSavedThemes } from "@/store/slices/presentationGeneration";
+import { setThemes, setSelectedThemeIndex } from "@/store/slices/presentationGeneration";
 import { jsonrepair } from "jsonrepair";
 import { RootState } from "@/store/store";
 
 export const useThemesStreaming = (presentationId: string | null) => {
   const dispatch = useDispatch();
-  const { themes, savedThemes } = useSelector((state: RootState) => state.presentationGeneration);
+  const { themes } = useSelector((state: RootState) => state.presentationGeneration);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeThemeIndex, setActiveThemeIndex] = useState<number | null>(null);
@@ -23,6 +23,13 @@ export const useThemesStreaming = (presentationId: string | null) => {
     let accumulatedChunks = "";
 
     const initializeStream = async () => {
+      dispatch(setThemes([]));
+      dispatch(setSelectedThemeIndex(null));
+      prevThemesRef.current = [];
+      activeIndexRef.current = -1;
+      highestIndexRef.current = -1;
+      setHighestActiveIndex(-1);
+      setActiveThemeIndex(null);
       setIsStreaming(true);
       setIsLoading(true);
       try {
@@ -63,15 +70,6 @@ export const useThemesStreaming = (presentationId: string | null) => {
               try {
                 const themesData: any[] = data.themes.themes;
                 dispatch(setThemes(themesData));
-
-                // Solo guardar automáticamente si NO hay temas guardados previamente
-                // Esto evita sobrescribir temas guardados existentes
-                if (!savedThemes || savedThemes.length === 0) {
-                  console.log("No hay temas guardados, guardando automáticamente los nuevos");
-                  dispatch(setSavedThemes(themesData));
-                } else {
-                  console.log("Ya hay temas guardados, no se sobrescriben");
-                }
 
                 setIsStreaming(false);
                 setIsLoading(false);

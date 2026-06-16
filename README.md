@@ -55,7 +55,7 @@ Presenton está construido con tecnologías modernas y robustas:
 - **Node.js 20** - Runtime de JavaScript
 
 ### Integraciones de IA
-- **OpenAI** (GPT-4, DALL-E 3)
+- **OpenAI** (GPT-4, GPT Image)
 - **Google Gemini** (Gemini 2.0 Flash)
 - **Anthropic Claude** (Claude 3.5 Sonnet)
 - **Ollama** (Modelos locales como Llama 3.2)
@@ -80,7 +80,7 @@ Presenton te da control completo sobre tu flujo de trabajo de presentaciones con
 * ✅ **Integración con Ollama** — Ejecuta modelos de código abierto localmente con privacidad completa
 * ✅ **Compatible con API de OpenAI** — Conéctate a cualquier endpoint compatible con OpenAI con tus propios modelos
 * ✅ **Soporte Multi-Proveedor** — Mezcla y combina proveedores de generación de texto e imágenes
-* ✅ **Generación de Imágenes Versátil** — Elige entre DALL-E 3, Gemini Flash, Pexels, o Pixabay
+* ✅ **Generación de Imágenes Versátil** — Elige entre GPT Image (OpenAI), Gemini Flash Image, Pexels, o Pixabay
 * ✅ **Soporte de Medios Enriquecidos** — Iconos, gráficos y gráficos personalizados para presentaciones profesionales
 * ✅ **Ejecuta Localmente** — Todo el procesamiento ocurre en tu dispositivo, sin dependencias en la nube
 * ✅ **Implementación de API** — Aloja como tu propio servicio API para tu equipo
@@ -179,7 +179,9 @@ Puedes proporcionar directamente tus CLAVES API como variables de entorno y mant
 
 ### Variables de Entorno para Imágenes
 
-- **IMAGE_PROVIDER=[pexels/pixabay/gemini_flash/dall-e-3]**: Selecciona el proveedor de imágenes de tu elección.
+- **IMAGE_PROVIDER=[pexels/pixabay/gemini_flash/dall-e-3]**: Selecciona el proveedor de imágenes. El valor `dall-e-3` usa internamente GPT Image (`gpt-image-1.5` por defecto), ya que OpenAI retiró DALL-E 3 de la API en mayo 2026.
+- **OPENAI_IMAGE_MODEL=[gpt-image-1.5/gpt-image-1-mini/gpt-image-2]**: Modelo OpenAI para generación de imágenes (opcional, default: `gpt-image-1.5`).
+- **GOOGLE_IMAGE_MODEL=[gemini-3.1-flash-image]**: Modelo Google para generación de imágenes (opcional, default: `gemini-3.1-flash-image`).
 - **PEXELS_API_KEY=[Tu Clave API de Pexels]**: Requerida si usas **pexels** como proveedor de imágenes.
 - **PIXABAY_API_KEY=[Tu Clave API de Pixabay]**: Requerida si usas **pixabay** como proveedor de imágenes.
 
@@ -251,7 +253,7 @@ docker run -it --name presenton --gpus=all -p 5000:80 \
 - **Reorganización**: Arrastra y suelta diapositivas para reorganizar el orden
 
 ### 3. Generación de Contenido Multimedia
-- **Imágenes con IA**: Genera imágenes personalizadas usando DALL-E 3, Gemini Flash
+- **Imágenes con IA**: Genera imágenes personalizadas usando GPT Image (OpenAI) o Gemini Flash Image
 - **Imágenes de stock**: Integración con Pexels y Pixabay para imágenes profesionales
 - **Iconos y gráficos**: Biblioteca extensa de iconos y elementos gráficos
 - **Gráficos y tablas**: Crea visualizaciones de datos automáticamente

@@ -1,8 +1,9 @@
 "use client";
-import React from "react";
+import React, { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLayout } from "../(presentation-generator)/context/LayoutContext";
-const page = () => {
+
+const SchemaPageContent = () => {
   const searchParams = useSearchParams();
   const group = searchParams.get("group");
   const { getLayoutsByGroup, getGroupSetting, loading } = useLayout();
@@ -26,6 +27,14 @@ const page = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const page = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SchemaPageContent />
+    </Suspense>
   );
 };
 

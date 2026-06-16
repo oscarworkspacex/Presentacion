@@ -9,6 +9,60 @@ import { jsonrepair } from "jsonrepair";
 import { toast } from "sonner";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
 
+const hasPlaceholderImages = (slides: any[] | undefined): boolean => {
+  if (!slides?.length) return false;
+
+  const checkValue = (value: unknown): boolean => {
+    if (typeof value === "string") {
+      return value.includes("placeholder.jpg");
+    }
+    if (value && typeof value === "object") {
+      return Object.values(value as Record<string, unknown>).some(checkValue);
+    }
+    return false;
+  };
+
+  return slides.some((slide) => checkValue(slide?.content));
+};
+
+const countPlaceholderImages = (slides: any[] | undefined): number => {
+  if (!slides?.length) return 0;
+
+  let count = 0;
+  const checkValue = (value: unknown): void => {
+    if (typeof value === "string" && value.includes("placeholder.jpg")) {
+      count += 1;
+      return;
+    }
+    if (value && typeof value === "object") {
+      Object.values(value as Record<string, unknown>).forEach(checkValue);
+    }
+  };
+
+  slides.forEach((slide) => checkValue(slide?.content));
+  return count;
+};
+
+const countTotalImages = (slides: any[] | undefined): number => {
+  if (!slides?.length) return 0;
+
+  let count = 0;
+  const checkValue = (value: unknown, key?: string): void => {
+    if (key === "__image_prompt__" && typeof value === "string" && value.length > 0) {
+      count += 1;
+      return;
+    }
+    if (value && typeof value === "object") {
+      Object.entries(value as Record<string, unknown>).forEach(([k, v]) =>
+        checkValue(v, k)
+      );
+    }
+  };
+
+  slides.forEach((slide) => checkValue(slide?.content));
+  return count;
+};
+
 export const usePresentationStreaming = (
   presentationId: string,
   stream: string | null,
@@ -18,6 +72,7 @@ export const usePresentationStreaming = (
 ) => {
   const dispatch = useDispatch();
   const previousSlidesLength = useRef(0);
+  const lastStreamDetail = useRef<string | null>(null);
 
   useEffect(() => {
     let eventSource: EventSource;
@@ -70,6 +125,19 @@ export const usePresentationStreaming = (
               setLoading(false);
               eventSource.close();
 
+              if (hasPlaceholderImages(data.presentation?.slides)) {
+                const stats = data.image_generation_stats;
+                const failed =
+                  stats?.failed ?? countPlaceholderImages(data.presentation?.slides);
+                const total =
+                  stats?.total ?? (countTotalImages(data.presentation?.slides) || failed);
+                toast.warning("Algunas imágenes no se generaron", {
+                  description:
+                    lastStreamDetail.current ||
+                    `${failed} de ${total} imágenes no se generaron. Se reintentó automáticamente; revisa OPENAI_API_KEY y Settings si persiste.`,
+                });
+              }
+
               // Remove stream parameter from URL
               const newUrl = new URL(window.location.href);
               newUrl.searchParams.delete("stream");
@@ -94,10 +162,11 @@ export const usePresentationStreaming = (
             break;
           case "error":
             eventSource.close();
-            toast.error("Error in outline streaming", {
-              description:
-                data.detail ||
-                "Failed to connect to the server. Please try again.",
+            lastStreamDetail.current =
+              data.detail ||
+              "Failed to connect to the server. Please try again.";
+            toast.error("Error al generar la presentación", {
+              description: lastStreamDetail.current,
             });
             setLoading(false);
             dispatch(setStreaming(false));

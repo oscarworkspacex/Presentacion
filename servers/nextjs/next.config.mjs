@@ -13,6 +13,14 @@ const nextConfig = {
         source: '/app_data/fonts/:path*',
         destination: 'http://localhost:8000/app_data/fonts/:path*',
       },
+      {
+        source: '/static/:path*',
+        destination: 'http://localhost:8000/static/:path*',
+      },
+      {
+        source: '/app_data/images/:path*',
+        destination: 'http://localhost:8000/app_data/images/:path*',
+      },
     ];
   },
 

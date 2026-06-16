@@ -5,8 +5,8 @@ export const ImageSchema = z.object({
         description: "URL to image",
     }),
     __image_prompt__: z.string().meta({
-        description: "Prompt used to generate the image",
-    }).min(10).max(50),
+        description: "Prompt used to generate the image. Max 18 words",
+    }).min(10).max(90),
 })
 
 export const IconSchema = z.object({

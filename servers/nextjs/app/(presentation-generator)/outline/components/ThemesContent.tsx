@@ -35,6 +35,7 @@ interface ThemeCollection {
 interface ThemesContentProps {
   themes: Theme[];
   savedThemes?: Theme[];
+  presentationId?: string | null;
   selectedThemeIndex?: number | null;
   isLoading: boolean;
   isStreaming: boolean;
@@ -48,6 +49,7 @@ interface ThemesContentProps {
 const ThemesContent: React.FC<ThemesContentProps> = ({
   themes,
   savedThemes,
+  presentationId,
   selectedThemeIndex,
   isLoading,
   isStreaming,
@@ -92,19 +94,18 @@ const ThemesContent: React.FC<ThemesContentProps> = ({
   let showSavedThemes = false;
 
   if (selectedCollectionId && themeCollections) {
-    // Si hay una colección seleccionada, mostrar los temas de esa colección
     const selectedCollection = themeCollections.find(c => c.id === selectedCollectionId);
     if (selectedCollection) {
       themesToDisplay = selectedCollection.themes;
       currentCollectionName = selectedCollection.name;
       showSavedThemes = true;
     }
-  } else if (savedThemes && savedThemes.length > 0 && !isLoading && !isStreaming) {
-    // Fallback al sistema anterior para compatibilidad
+  } else if ((themes && themes.length > 0) || isLoading || isStreaming) {
+    themesToDisplay = themes || [];
+  } else if (!presentationId && savedThemes && savedThemes.length > 0) {
     themesToDisplay = savedThemes;
     showSavedThemes = true;
   } else {
-    // Mostrar temas generados durante la generación o cuando no hay colecciones
     themesToDisplay = themes || [];
   }
 
