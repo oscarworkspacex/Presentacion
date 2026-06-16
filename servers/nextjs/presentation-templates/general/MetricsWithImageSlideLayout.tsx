@@ -114,7 +114,7 @@ const MetricsWithImageSlideLayout: React.FC<MetricsWithImageSlideLayoutProps> = 
                             {slideData?.title || 'Competitive Advantage'}
                         </h1>
 
-                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-3`}>
+                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={SLIDE_BODY}>
                             {slideData?.description || 'Ginyard International Co. stands out by offering custom digital solutions tailored to client needs, alongside long-term support to ensure lasting relationships and continuous adaptation.'}
                         </p>
 

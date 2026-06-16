@@ -148,7 +148,7 @@ const TableInfoSlideLayout: React.FC<TableInfoSlideLayoutProps> = ({ data: slide
                     </div>
 
                     <div className="text-center">
-                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-3 max-w-4xl mx-auto`}>
+                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} max-w-4xl mx-auto`}>
                             {slideData?.description || 'This comparison shows our competitive position in the market. While we currently have a smaller market share, our growth rate significantly exceeds competitors, indicating strong potential for future expansion.'}
                         </p>
                     </div>

@@ -140,7 +140,7 @@ const BulletIconsOnlySlideLayout: React.FC<BulletIconsOnlySlideLayoutProps> = ({
                                         {bullet.subtitle && (
                                             <p
                                                 style={{ color: "var(--text-body-color,#4b5563)" }}
-                                                className="text-sm lg:text-base leading-relaxed line-clamp-2 mt-1"
+                                                className="text-sm lg:text-base leading-relaxed line-clamp-3 mt-1 break-words"
                                             >
                                                 {bullet.subtitle}
                                             </p>
@@ -160,7 +160,7 @@ const BulletIconsOnlySlideLayout: React.FC<BulletIconsOnlySlideLayoutProps> = ({
                                 <path d="M16 0l4.12 8.38L28 12l-7.88 3.62L16 24l-4.12-8.38L4 12l7.88-3.62L16 0z" />
                             </svg>
                         </div>
-                        <div className="w-full max-h-[300px] rounded-2xl overflow-hidden shadow-lg">
+                        <div className="w-full max-h-[380px] rounded-2xl overflow-hidden shadow-lg">
                             <img
                                 src={slideData?.image?.__image_url__ || ''}
                                 alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}

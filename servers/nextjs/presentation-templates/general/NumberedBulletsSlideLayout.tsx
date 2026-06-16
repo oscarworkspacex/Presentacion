@@ -104,7 +104,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                             />
                         </div>
 
-                        <div className="flex-shrink-0 w-64 h-40">
+                        <div className="flex-shrink-0 w-80 h-52">
                             <img
                                 src={slideData?.image?.__image_url__ || ''}
                                 alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
@@ -135,7 +135,7 @@ const NumberedBulletsSlideLayout: React.FC<NumberedBulletsSlideLayoutProps> = ({
                                     </h3>
                                     <p
                                         style={{ color: "var(--text-body-color,#4b5563)" }}
-                                        className="text-sm leading-relaxed line-clamp-4"
+                                        className="text-sm leading-relaxed line-clamp-5 break-words"
                                     >
                                         {bullet.description}
                                     </p>

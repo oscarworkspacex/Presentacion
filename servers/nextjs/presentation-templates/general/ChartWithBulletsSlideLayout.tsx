@@ -267,7 +267,7 @@ const ChartWithBulletsSlideLayout: React.FC<ChartWithBulletsSlideLayoutProps> = 
                             {slideData?.title || 'Market Size'}
                         </h1>
 
-                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-2 mb-4`}>
+                        <p style={{color:"var(--text-body-color,#4b5563)"}} className={`${SLIDE_BODY} line-clamp-3 mb-4`}>
                             {slideData?.description || 'Businesses face challenges with outdated technology and rising costs, limiting efficiency and growth in competitive markets.'}
                         </p>
 
@@ -302,7 +302,7 @@ const ChartWithBulletsSlideLayout: React.FC<ChartWithBulletsSlideLayoutProps> = 
                                     </h3>
                                 </div>
 
-                                <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs leading-relaxed line-clamp-3 opacity-90">
+                                <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs leading-relaxed line-clamp-4 opacity-90 break-words">
                                     {bullet.description}
                                 </p>
                             </div>

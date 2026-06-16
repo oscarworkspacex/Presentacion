@@ -147,7 +147,7 @@ const MetricsSlideLayout: React.FC<MetricsSlideLayoutProps> = ({ data: slideData
                                             className="rounded-lg p-3 text-center"
                                             style={{background:"var(--primary-accent-color,#9333ea)"}}
                                         >
-                                            <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs sm:text-sm leading-relaxed line-clamp-3">
+                                            <p style={{color:"var(--text-body-color,#ffffff)"}} className="text-xs sm:text-sm leading-relaxed line-clamp-4 break-words">
                                                 {metric.description}
                                             </p>
                                         </div>

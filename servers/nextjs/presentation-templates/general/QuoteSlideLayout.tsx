@@ -100,7 +100,7 @@ const QuoteSlideLayout: React.FC<QuoteSlideLayoutProps> = ({ data: slideData }) 
                                 </svg>
                             </div>
 
-                            <blockquote style={{color:"var(--text-body-color,#ffffff)"}} className="text-lg sm:text-xl lg:text-2xl font-medium text-white leading-relaxed italic line-clamp-4">
+                            <blockquote style={{color:"var(--text-body-color,#ffffff)"}} className="text-lg sm:text-xl lg:text-2xl font-medium text-white leading-relaxed italic line-clamp-6 break-words">
                                 "{slideData?.quote || 'Success is not final, failure is not fatal: it is the courage to continue that counts. The future belongs to those who believe in the beauty of their dreams.'}"
                             </blockquote>
 

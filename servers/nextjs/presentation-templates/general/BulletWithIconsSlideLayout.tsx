@@ -8,7 +8,6 @@ import {
     SLIDE_BODY,
     SLIDE_SUBTITLE,
     SLIDE_ACCENT_LINE,
-    SLIDE_IMAGE_COMPACT,
 } from '@/presentation-templates/slideLayoutUtils';
 
 export const layoutId = 'bullet-with-icons-slide'
@@ -95,30 +94,20 @@ const BulletWithIconsSlideLayout: React.FC<BulletWithIconsSlideLayoutProps> = ({
                 )}
 
                 <div className="relative z-10 flex flex-col h-full px-8 sm:px-12 lg:px-20 pt-8 pb-6">
-                    <div className="flex items-start justify-between gap-6 mb-4">
-                        <div className="flex-1 min-w-0">
-                            <h1
-                                style={{ color: "var(--text-heading-color,#111827)" }}
-                                className={SLIDE_TITLE}
-                            >
-                                {slideData?.title || 'Problem'}
-                            </h1>
-                            <div
-                                style={{ background: "var(--primary-accent-color,#9333ea)" }}
-                                className={`${SLIDE_ACCENT_LINE} mt-3`}
-                            />
-                        </div>
-                        <div className="flex-shrink-0 w-56 h-36 rounded-lg overflow-hidden shadow-md">
-                            <img
-                                src={slideData?.image?.__image_url__ || ''}
-                                alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
-                                className={SLIDE_IMAGE_COMPACT}
-                                style={{ background: "var(--tertiary-accent-color,#e5e7eb)" }}
-                            />
-                        </div>
+                    <div className="mb-5">
+                        <h1
+                            style={{ color: "var(--text-heading-color,#111827)" }}
+                            className={SLIDE_TITLE}
+                        >
+                            {slideData?.title || 'Problem'}
+                        </h1>
+                        <div
+                            style={{ background: "var(--primary-accent-color,#9333ea)" }}
+                            className={`${SLIDE_ACCENT_LINE} mt-3`}
+                        />
                     </div>
 
-                    <div className="flex-1 min-h-0 grid grid-cols-2 gap-6">
+                    <div className="flex-1 min-h-0 grid grid-cols-2 gap-8">
                         <div className="relative min-h-0 flex items-center justify-center">
                             <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                                 <svg className="w-full h-full opacity-30" viewBox="0 0 200 200">
@@ -130,19 +119,20 @@ const BulletWithIconsSlideLayout: React.FC<BulletWithIconsSlideLayoutProps> = ({
                                     <rect width="100%" height="100%" fill="url(#grid-bwi)" />
                                 </svg>
                             </div>
-                            <div className="relative z-10 w-full max-h-full rounded-2xl overflow-hidden shadow-lg">
+                            <div className="relative z-10 w-full h-full rounded-2xl overflow-hidden shadow-lg">
                                 <img
                                     src={slideData?.image?.__image_url__ || ''}
                                     alt={slideData?.image?.__image_prompt__ || slideData?.title || ''}
-                                    className="w-full max-h-[280px] object-cover"
+                                    className="w-full h-full object-cover"
+                                    style={{ background: "var(--tertiary-accent-color,#e5e7eb)" }}
                                 />
                             </div>
                         </div>
 
-                        <div className="flex flex-col justify-center min-h-0 overflow-hidden">
+                        <div className="flex flex-col justify-center min-h-0">
                             <p
                                 style={{ color: "var(--text-body-color,#4b5563)" }}
-                                className={`${SLIDE_BODY} mb-4 line-clamp-3`}
+                                className={`${SLIDE_BODY} mb-4`}
                             >
                                 {slideData?.description || 'Businesses face challenges with outdated technology and rising costs, limiting efficiency and growth in competitive markets.'}
                             </p>
@@ -175,7 +165,7 @@ const BulletWithIconsSlideLayout: React.FC<BulletWithIconsSlideLayoutProps> = ({
                                             />
                                             <p
                                                 style={{ color: "var(--text-body-color,#4b5563)" }}
-                                                className="text-sm leading-relaxed line-clamp-2"
+                                                className="text-sm leading-relaxed line-clamp-3 break-words"
                                             >
                                                 {bullet.description}
                                             </p>

@@ -33,7 +33,7 @@ def get_system_prompt(
 
         # Notes
         - Prioritize substantive, informative content: include concrete data, examples, statistics, and key concepts from the outline.
-        - Use the maximum allowed character limit for each field — do not leave fields unnecessarily short.
+        - Keep content concise and clear. It is BETTER to under-fill a field than to fill it completely: the slide has a fixed size and overly long text gets cut off or overflows the design.
         - Slide body should not use words like "This slide", "This presentation".
         - Rephrase the slide body to make it flow naturally.
         - Only use markdown to highlight important points.
@@ -41,15 +41,16 @@ def get_system_prompt(
         - Speaker note should be normal text, not markdown.
         - Strictly follow the max and min character limit for every property in the slide.
         - Never ever go over the max character limit. Limit your narration to make sure you never go over the max character limit.
+        - CRITICAL (anti-overflow): The text must fit fully inside the slide without being cut. Always leave a safety margin below the max character limit. Prefer shorter, complete sentences over long text that risks being clipped.
         - Number of items should not be more than max number of items specified in slide schema. If you have to put multiple points then merge them to obey max numebr of items.
         - Generate content as per the given tone.
         - Be very careful with number of words to generate for given field. As generating more than max characters will overflow in the design. So, analyze early and never generate more characters than allowed.
         - Do not add emoji in the content.
         - Metrics should be in abbreviated form with least possible characters. Do not add long sequence of words for metrics.
-        - For verbosity:
-            - If verbosity is 'concise', then generate description as approximately 1/2 of the max character limit while keeping the most important facts.
-            - If verbosity is 'standard', then generate description as 85-90% of the max character limit.
-            - If verbosity is 'text-heavy', then generate description as 95% or higher of the max character limit. Make sure it does not exceed the max character limit.
+        - For verbosity (targets are upper bounds; never exceed the max character limit and prefer staying under the target):
+            - If verbosity is 'concise', then generate description around 40% of the max character limit while keeping the most important facts.
+            - If verbosity is 'standard', then generate description around 65-70% of the max character limit.
+            - If verbosity is 'text-heavy', then generate description around 80-85% of the max character limit. Make sure it does not exceed the max character limit.
 
         User instructions, tone and verbosity should always be followed and should supercede any other instruction, except for max and min character limit, slide schema and number of items.
 
